@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Proactive AI Wizard of Oz
 
-## Getting Started
+This project is a Wizard of Oz experiment designed to test proactive AI assistance in real-time writing. The MVP allows a human "wizard" to view and modify AI-generated suggestions before they are pushed to the user, and collects detailed data for analysis.
 
-First, run the development server:
+## Overview
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **User Interface:** A web-based text editor where users can create content and receive proactive AI suggestions.
+- **Wizard Interface:** A control panel that displays the current text context, AI-generated suggestions, and allows a human moderator (wizard) to edit or override these suggestions before they reach the user.
+- **Realtime Data & Logging:** Uses Supabase Realtime to sync events between the user and wizard, capturing logs of text changes, suggestion events, and user decisions.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Real-time Collaboration:** Built with Next.js and Supabase Realtime for a seamless, low-latency experience.
+- **Wizard Control:** A dedicated dashboard for monitoring user activity and managing AI suggestions.
+- **Event Logging:** Detailed logging of:
+  - User text input snapshots
+  - AI suggestions generated
+  - Wizard modifications
+  - User decisions (accept, partially accept, reject)
+- **Data Collection for Analysis:** Exportable logs (CSV/Excel) and screen recording (to be integrated with external tools) for later analysis.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture
 
-## Learn More
+### User Side
+- **Text Editor:** A simple UI for content creation.
+- **Suggestion Display:** A sidebar or inline suggestion box that shows AI suggestions pushed by the wizard.
 
-To learn more about Next.js, take a look at the following resources:
+### Wizard Side
+- **Control Panel:** Displays the user's current text state and pending AI suggestions.
+- **Editable Suggestion Field:** Allows modifications to suggestions before they are sent to the user.
+- **Send Button:** Pushes the final suggestion to the user interface.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Backend
+- **Supabase Realtime:** For synchronizing events and data between user and wizard interfaces.
+- **API Endpoints:**
+  - `/api/userState`: To fetch the current text state.
+  - `/api/pushSuggestion`: To send a suggestion from the wizard to the user.
+  - `/api/logEvent`: To record every interaction event.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Installation
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/your-username/proactive-ai-wizard-of-oz.git
+   cd proactive-ai-wizard-of-oz

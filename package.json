@@ -9,19 +9,40 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.1.6",
+    "@supabase/supabase-js": "^2.49.1",
+    "@udecode/cn": "^44.0.1",
+    "@udecode/plate": "^46.0.4",
+    "@udecode/plate-ai": "^46.0.8",
+    "@udecode/plate-basic-marks": "^46.0.5",
+    "@udecode/plate-block-quote": "^44.0.0",
+    "@udecode/plate-callout": "^44.0.0",
+    "@udecode/plate-comments": "^45.0.0",
+    "@udecode/plate-common": "^42.0.0",
+    "@udecode/plate-core": "^46.0.4",
+    "@udecode/plate-heading": "^44.0.0",
+    "@udecode/plate-suggestion": "^46.0.1",
+    "@udecode/plate-ui": "^35.0.0",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.482.0",
+    "next": "15.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.2.2"
+    "slate": "^0.112.0",
+    "slate-history": "^0.110.3",
+    "slate-react": "^0.112.1",
+    "tailwind-scrollbar-hide": "^2.0.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
