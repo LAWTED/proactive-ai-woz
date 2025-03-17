@@ -11,11 +11,11 @@ interface Suggestion {
   wizard_session_id: string;
   user_id: number;
   is_accepted: boolean | null;
-  type: 'append' | 'comment';
+  type: "append" | "comment";
   position?: number;
   end_position?: number;
   selected_text?: string;
-  reaction?: 'like' | 'apply' | 'reject';
+  reaction?: "like" | "apply" | "reject";
   created_at: string;
 }
 
@@ -37,7 +37,7 @@ export default function UserPage() {
     setSessionId(newSessionId);
 
     // 检查本地存储是否有用户信息
-    const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
@@ -48,10 +48,11 @@ export default function UserPage() {
         // 获取用户的文档
         fetchUserDocument(userData.id);
       } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('user');
+        console.error("Error parsing stored user data:", error);
+        localStorage.removeItem("user");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 设置Supabase订阅
@@ -63,24 +64,29 @@ export default function UserPage() {
 
     // 设置Supabase实时订阅
     const suggestionsSubscription = supabase
-      .channel('suggestions-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'suggestions',
-        filter: `user_id=eq.${userId}`
-      }, (payload) => {
-        console.log('Suggestion update:', payload);
+      .channel("suggestions-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "suggestions",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log("Suggestion update:", payload);
 
-        // 如果收到新建议或建议状态更新，刷新建议列表
-        fetchSuggestions();
-      })
+          // 如果收到新建议或建议状态更新，刷新建议列表
+          fetchSuggestions();
+        }
+      )
       .subscribe();
 
     // 组件卸载时清理订阅
     return () => {
       suggestionsSubscription.unsubscribe();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // 获取所有建议
@@ -89,10 +95,10 @@ export default function UserPage() {
 
     try {
       const { data, error } = await supabase
-        .from('suggestions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .from("suggestions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -102,7 +108,10 @@ export default function UserPage() {
 
         // 查找是否有需要在右侧面板显示的append类型建议
         const appendSuggestion = allSuggestions.find(
-          s => s.type === 'append' && s.is_accepted === null && s.reaction === undefined
+          (s) =>
+            s.type === "append" &&
+            s.is_accepted === null &&
+            s.reaction === undefined
         );
 
         if (appendSuggestion) {
@@ -115,7 +124,7 @@ export default function UserPage() {
         setSuggestions(allSuggestions);
       }
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      console.error("Error fetching suggestions:", error);
     }
   };
 
@@ -125,10 +134,10 @@ export default function UserPage() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('user_id', uid)
-        .order('updated_at', { ascending: false })
+        .from("documents")
+        .select("*")
+        .eq("user_id", uid)
+        .order("updated_at", { ascending: false })
         .limit(1);
 
       if (error) throw error;
@@ -141,7 +150,7 @@ export default function UserPage() {
         createNewDocument(uid);
       }
     } catch (error) {
-      console.error('Error fetching document:', error);
+      console.error("Error fetching document:", error);
     } finally {
       setLoading(false);
     }
@@ -151,11 +160,13 @@ export default function UserPage() {
   const createNewDocument = async (uid: number) => {
     try {
       const { data, error } = await supabase
-        .from('documents')
-        .insert([{
-          content: "",
-          user_id: uid
-        }])
+        .from("documents")
+        .insert([
+          {
+            content: "",
+            user_id: uid,
+          },
+        ])
         .select();
 
       if (error) throw error;
@@ -164,7 +175,7 @@ export default function UserPage() {
         setDocumentId(data[0].id);
       }
     } catch (error) {
-      console.error('Error creating document:', error);
+      console.error("Error creating document:", error);
     }
   };
 
@@ -173,7 +184,7 @@ export default function UserPage() {
     e.preventDefault();
 
     if (!userName.trim()) {
-      alert('请输入您的名字');
+      alert("请输入您的名字");
       return;
     }
 
@@ -182,11 +193,13 @@ export default function UserPage() {
     try {
       // 注册用户
       const { data, error } = await supabase
-        .from('users')
-        .insert([{
-          name: userName,
-          session_id: sessionId
-        }])
+        .from("users")
+        .insert([
+          {
+            name: userName,
+            session_id: sessionId,
+          },
+        ])
         .select();
 
       if (error) throw error;
@@ -196,18 +209,21 @@ export default function UserPage() {
         setIsRegistered(true);
 
         // 保存用户信息到本地存储
-        localStorage.setItem('user', JSON.stringify({
-          id: data[0].id,
-          name: userName,
-          session_id: sessionId
-        }));
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: data[0].id,
+            name: userName,
+            session_id: sessionId,
+          })
+        );
 
         // 创建新文档
         createNewDocument(data[0].id);
       }
     } catch (error) {
-      console.error('Error registering user:', error);
-      alert('注册失败，请重试');
+      console.error("Error registering user:", error);
+      alert("注册失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -227,38 +243,38 @@ export default function UserPage() {
   const updateDocument = async (content: string) => {
     try {
       const { error } = await supabase
-        .from('documents')
+        .from("documents")
         .update({
           content,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', documentId);
+        .eq("id", documentId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error updating document:', error);
+      console.error("Error updating document:", error);
     }
   };
 
   // 处理添加类型建议的接受
   const handleAcceptSuggestion = async (id: number) => {
-    const suggestionToAccept = suggestions.find(s => s.id === id);
+    const suggestionToAccept = suggestions.find((s) => s.id === id);
     if (!suggestionToAccept) return;
 
     try {
       // 更新建议状态
       const { error: updateError } = await supabase
-        .from('suggestions')
+        .from("suggestions")
         .update({
           is_accepted: true,
-          reaction: 'apply'
+          reaction: "apply",
         })
-        .eq('id', id);
+        .eq("id", id);
 
       if (updateError) throw updateError;
 
       // 如果是添加类型的建议，更新文本
-      if (suggestionToAccept.type === 'append') {
+      if (suggestionToAccept.type === "append") {
         const newText = text + suggestionToAccept.content;
         setText(newText);
         updateDocument(newText);
@@ -267,29 +283,29 @@ export default function UserPage() {
       // 刷新建议列表
       fetchSuggestions();
     } catch (error) {
-      console.error('Error updating suggestion status:', error);
+      console.error("Error updating suggestion status:", error);
     }
   };
 
   // 处理部分接受
   const handlePartialAccept = async (id: number, partialText: string) => {
-    const suggestionToAccept = suggestions.find(s => s.id === id);
+    const suggestionToAccept = suggestions.find((s) => s.id === id);
     if (!suggestionToAccept) return;
 
     try {
       // 更新建议状态
       const { error: updateError } = await supabase
-        .from('suggestions')
+        .from("suggestions")
         .update({
           is_accepted: true,
-          reaction: 'apply'
+          reaction: "apply",
         })
-        .eq('id', id);
+        .eq("id", id);
 
       if (updateError) throw updateError;
 
       // 更新文本（只适用于添加类型）
-      if (suggestionToAccept.type === 'append') {
+      if (suggestionToAccept.type === "append") {
         const newText = text + partialText;
         setText(newText);
         updateDocument(newText);
@@ -298,7 +314,7 @@ export default function UserPage() {
       // 刷新建议列表
       fetchSuggestions();
     } catch (error) {
-      console.error('Error updating suggestion status:', error);
+      console.error("Error updating suggestion status:", error);
     }
   };
 
@@ -306,19 +322,19 @@ export default function UserPage() {
   const handleRejectSuggestion = async (id: number) => {
     try {
       const { error } = await supabase
-        .from('suggestions')
+        .from("suggestions")
         .update({
           is_accepted: false,
-          reaction: 'reject'
+          reaction: "reject",
         })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
       // 刷新建议列表
       fetchSuggestions();
     } catch (error) {
-      console.error('Error rejecting suggestion:', error);
+      console.error("Error rejecting suggestion:", error);
     }
   };
 
@@ -326,18 +342,18 @@ export default function UserPage() {
   const handleLikeSuggestion = async (id: number) => {
     try {
       const { error } = await supabase
-        .from('suggestions')
+        .from("suggestions")
         .update({
-          reaction: 'like'
+          reaction: "like",
         })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
       // 刷新建议列表
       fetchSuggestions();
     } catch (error) {
-      console.error('Error liking suggestion:', error);
+      console.error("Error liking suggestion:", error);
     }
   };
 
@@ -349,21 +365,23 @@ export default function UserPage() {
       // 更新文本
       let newText = text;
 
-      if (suggestion.type === 'comment' && suggestion.selected_text) {
+      if (suggestion.type === "comment" && suggestion.selected_text) {
         // 对于修改类型建议，替换选中的文本
         if (suggestion.position !== undefined) {
           if (suggestion.end_position !== undefined) {
-            newText = text.substring(0, suggestion.position) +
-                    suggestion.content +
-                    text.substring(suggestion.end_position);
+            newText =
+              text.substring(0, suggestion.position) +
+              suggestion.content +
+              text.substring(suggestion.end_position);
           } else {
             // 如果没有结束位置，则只在位置插入内容
-            newText = text.substring(0, suggestion.position) +
-                    suggestion.content +
-                    text.substring(suggestion.position);
+            newText =
+              text.substring(0, suggestion.position) +
+              suggestion.content +
+              text.substring(suggestion.position);
           }
         }
-      } else if (suggestion.type === 'append') {
+      } else if (suggestion.type === "append") {
         // 对于添加类型建议，将内容添加到文本末尾
         newText = text + suggestion.content;
       }
@@ -374,42 +392,42 @@ export default function UserPage() {
 
       // 更新建议状态
       const { error } = await supabase
-        .from('suggestions')
+        .from("suggestions")
         .update({
-          reaction: 'apply',
-          is_accepted: true
+          reaction: "apply",
+          is_accepted: true,
         })
-        .eq('id', suggestion.id);
+        .eq("id", suggestion.id);
 
       if (error) throw error;
 
       // 刷新建议列表
       fetchSuggestions();
     } catch (error) {
-      console.error('Error applying text modification:', error);
+      console.error("Error applying text modification:", error);
     }
   };
 
   // 高亮显示建议位置
   const highlightSuggestionPosition = (suggestion: Suggestion) => {
-    console.log('highlightSuggestionPosition', suggestion);
+    console.log("highlightSuggestionPosition", suggestion);
     if (suggestion.position === undefined) return;
 
     // 找到文本编辑器元素
-    const editorElement = document.querySelector('.ProseMirror');
+    const editorElement = document.querySelector(".ProseMirror");
     if (!editorElement) return;
 
     // 创建临时高亮样式
-    const tempHighlight = document.createElement('div');
-    tempHighlight.className = 'suggestion-highlight';
-    tempHighlight.style.position = 'absolute';
-    tempHighlight.style.backgroundColor = 'rgba(255, 217, 0, 0.3)';
-    tempHighlight.style.padding = '2px 0';
-    tempHighlight.style.borderRadius = '2px';
-    tempHighlight.style.animation = 'pulse 1.5s 3';
+    const tempHighlight = document.createElement("div");
+    tempHighlight.className = "suggestion-highlight";
+    tempHighlight.style.position = "absolute";
+    tempHighlight.style.backgroundColor = "rgba(255, 217, 0, 0.3)";
+    tempHighlight.style.padding = "2px 0";
+    tempHighlight.style.borderRadius = "2px";
+    tempHighlight.style.animation = "pulse 1.5s 3";
 
     // 添加动画样式
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       @keyframes pulse {
         0% { opacity: 0; }
@@ -422,7 +440,7 @@ export default function UserPage() {
     // 尝试定位到相应位置
     try {
       // 简化实现：滚动到编辑器
-      editorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      editorElement.scrollIntoView({ behavior: "smooth", block: "center" });
 
       // 3秒后移除高亮和样式
       setTimeout(() => {
@@ -430,7 +448,7 @@ export default function UserPage() {
         style.remove();
       }, 3000);
     } catch (error) {
-      console.error('Error highlighting position:', error);
+      console.error("Error highlighting position:", error);
     }
   };
 
@@ -445,7 +463,10 @@ export default function UserPage() {
 
         <form onSubmit={handleRegister} className="mt-8 space-y-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700"
+            >
               您的名字
             </label>
             <div className="mt-1">
@@ -468,7 +489,7 @@ export default function UserPage() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {loading ? '处理中...' : '开始写作'}
+              {loading ? "处理中..." : "开始写作"}
             </button>
           </div>
         </form>
@@ -480,7 +501,9 @@ export default function UserPage() {
   const renderEditor = () => (
     <div className="flex min-h-screen flex-col">
       <header className="p-4 bg-blue-600 text-white">
-        <h1 className="text-xl font-bold">Document Editor - 欢迎, {userName}</h1>
+        <h1 className="text-xl font-bold">
+          Document Editor - 欢迎, {userName}
+        </h1>
       </header>
 
       <main className="flex flex-1 p-4">
@@ -491,10 +514,7 @@ export default function UserPage() {
             </div>
           ) : (
             <div>
-              <TextEditor
-                value={text}
-                onChange={handleTextChange}
-              />
+              <TextEditor value={text} onChange={handleTextChange} />
             </div>
           )}
         </div>
