@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import SuggestionEditor from "@/components/SuggestionEditor";
+import DeepSeekSuggestion from "@/components/DeepSeekSuggestion";
 
 // 定义数据类型
 interface User {
@@ -54,18 +55,13 @@ export default function WizardPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [sentSuggestions, setSentSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionType, setSuggestionType] = useState<"append" | "comment">(
-    "append"
-  );
+  const [suggestionType, setSuggestionType] = useState<"append" | "comment">("append");
   const [isSelectingText, setIsSelectingText] = useState<boolean>(false);
-  const [selectedTextPosition, setSelectedTextPosition] = useState<
-    number | null
-  >(null);
-  const [selectedTextEndPosition, setSelectedTextEndPosition] = useState<
-    number | null
-  >(null);
+  const [selectedTextPosition, setSelectedTextPosition] = useState<number | null>(null);
+  const [selectedTextEndPosition, setSelectedTextEndPosition] = useState<number | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [showUserList, setShowUserList] = useState<boolean>(true);
 
   // 获取所有用户
   const fetchUsers = async () => {
@@ -344,6 +340,10 @@ export default function WizardPage() {
     }
   };
 
+  const handleApplyDeepSeekSuggestion = (suggestion: string) => {
+    setSuggestion(suggestion);
+  };
+
   // 渲染建议状态标签
   const renderStatusBadge = (suggestion: Suggestion) => {
     if (suggestion.is_accepted === true) {
@@ -433,30 +433,50 @@ export default function WizardPage() {
       </header>
 
       <main className="flex flex-1">
-        <div className="w-64 bg-gray-100 p-4">
-          <h2 className="font-bold mb-4">在线用户</h2>
-          {loading ? (
-            <p className="text-gray-500">加载中...</p>
-          ) : activeUsers.length > 0 ? (
-            <ul className="space-y-2">
-              {activeUsers.map((user) => (
-                <li
-                  key={user.id}
-                  className={`p-2 rounded cursor-pointer ${
-                    selectedUser?.id === user.id
-                      ? "bg-blue-200"
-                      : "hover:bg-gray-200"
-                  }`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-xs text-gray-500">{user.session_id}</div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500">无在线用户</p>
-          )}
+        <div className={`bg-gray-100 transition-all duration-300 ${showUserList ? 'w-64' : 'w-12'}`}>
+          <div className="flex items-center justify-between p-4">
+            <h2 className={`font-bold ${showUserList ? 'visible' : 'hidden'}`}>在线用户</h2>
+            <button
+              onClick={() => setShowUserList(!showUserList)}
+              className="p-1 rounded-full hover:bg-gray-200"
+              title={showUserList ? "收起用户列表" : "展开用户列表"}
+            >
+              {showUserList ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          <div className={`px-4 pb-4 ${showUserList ? 'block' : 'hidden'}`}>
+            {loading ? (
+              <p className="text-gray-500">加载中...</p>
+            ) : activeUsers.length > 0 ? (
+              <ul className="space-y-2">
+                {activeUsers.map((user) => (
+                  <li
+                    key={user.id}
+                    className={`p-2 rounded cursor-pointer ${
+                      selectedUser?.id === user.id
+                        ? "bg-blue-200"
+                        : "hover:bg-gray-200"
+                    }`}
+                    onClick={() => handleUserSelect(user)}
+                  >
+                    <div className="font-medium">{user.name}</div>
+                    <div className="text-xs text-gray-500">{user.session_id}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500">无在线用户</p>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 p-4">
@@ -518,12 +538,20 @@ export default function WizardPage() {
                 )}
               </div>
 
-              <SuggestionEditor
-                value={suggestion}
-                onChange={handleSuggestionChange}
-                onSend={handleSendSuggestion}
-                isSending={isSending}
-              />
+              <div className="relative">
+                <DeepSeekSuggestion
+                  content={userText}
+                  onApply={handleApplyDeepSeekSuggestion}
+                  wizardSessionId={sessionId}
+                  userId={selectedUser?.id}
+                />
+                <SuggestionEditor
+                  value={suggestion}
+                  onChange={handleSuggestionChange}
+                  onSend={handleSendSuggestion}
+                  isSending={isSending}
+                />
+              </div>
 
               {/* 建议历史记录 */}
               <div className="mt-6">

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import TextEditor from "@/components/TextEditor";
+import HighlightTextEditor from "@/components/HighlightTextEditor";
 import SuggestionPanel from "@/components/SuggestionPanel";
 import { supabase } from "@/lib/supabase";
 
@@ -29,6 +29,7 @@ export default function UserPage() {
   const [userId, setUserId] = useState<number | null>(null);
   const [documentId, setDocumentId] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
 
   // 初始化会话
   useEffect(() => {
@@ -411,44 +412,13 @@ export default function UserPage() {
   // 高亮显示建议位置
   const highlightSuggestionPosition = (suggestion: Suggestion) => {
     console.log("highlightSuggestionPosition", suggestion);
-    if (suggestion.position === undefined) return;
 
-    // 找到文本编辑器元素
-    const editorElement = document.querySelector(".ProseMirror");
-    if (!editorElement) return;
-
-    // 创建临时高亮样式
-    const tempHighlight = document.createElement("div");
-    tempHighlight.className = "suggestion-highlight";
-    tempHighlight.style.position = "absolute";
-    tempHighlight.style.backgroundColor = "rgba(255, 217, 0, 0.3)";
-    tempHighlight.style.padding = "2px 0";
-    tempHighlight.style.borderRadius = "2px";
-    tempHighlight.style.animation = "pulse 1.5s 3";
-
-    // 添加动画样式
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes pulse {
-        0% { opacity: 0; }
-        50% { opacity: 1; }
-        100% { opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // 尝试定位到相应位置
-    try {
-      // 简化实现：滚动到编辑器
-      editorElement.scrollIntoView({ behavior: "smooth", block: "center" });
-
-      // 3秒后移除高亮和样式
-      setTimeout(() => {
-        tempHighlight.remove();
-        style.remove();
-      }, 3000);
-    } catch (error) {
-      console.error("Error highlighting position:", error);
+    // 如果有选中文本，设置为activeHighlight，否则清除高亮
+    if (suggestion.selected_text) {
+      setActiveHighlight(suggestion.selected_text);
+    } else {
+      // 清除高亮（当鼠标移开时）
+      setActiveHighlight(null);
     }
   };
 
@@ -514,7 +484,11 @@ export default function UserPage() {
             </div>
           ) : (
             <div>
-              <TextEditor value={text} onChange={handleTextChange} />
+              <HighlightTextEditor
+                content={text}
+                onContentChange={handleTextChange}
+                activeHighlight={activeHighlight || undefined}
+              />
             </div>
           )}
         </div>
