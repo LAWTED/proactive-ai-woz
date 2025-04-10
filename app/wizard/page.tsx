@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import SuggestionEditor from "@/components/SuggestionEditor";
 import DeepSeekSuggestion from "@/components/DeepSeekSuggestion";
+import DeepSeekFeedback from "@/components/DeepSeekFeedback";
 
 // 定义数据类型
 interface User {
@@ -344,6 +345,10 @@ export default function WizardPage() {
     setSuggestion(suggestion);
   };
 
+  const handleApplyDeepSeekComment = (suggestion: string) => {
+    setSuggestion(suggestion);
+  };
+
   // 渲染建议状态标签
   const renderStatusBadge = (suggestion: Suggestion) => {
     if (suggestion.is_accepted === true) {
@@ -396,7 +401,7 @@ export default function WizardPage() {
     } else {
       return (
         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-          修改
+          反馈
         </span>
       );
     }
@@ -489,7 +494,7 @@ export default function WizardPage() {
                 {isSelectingText && (
                   <div className="mb-2 flex items-center text-sm">
                     <span className="text-blue-600 font-medium">
-                      请选择要修改的文本范围
+                      请选择要添加读者反应的文本
                     </span>
                     <button
                       onClick={handleCancelSelect}
@@ -511,7 +516,7 @@ export default function WizardPage() {
                 <div className="flex items-center mb-2 justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600">
-                      {suggestionType === "append" ? "添加模式" : "修改模式"}
+                      {suggestionType === "append" ? "添加模式" : "反馈模式"}
                     </span>
                     <Switch
                       checked={isSelectingText}
@@ -533,18 +538,32 @@ export default function WizardPage() {
 
                 {suggestionType === "comment" && selectedText && (
                   <div className="mb-2 text-sm text-gray-500">
-                    请提供针对&ldquo;{selectedText}&rdquo;的修改建议
+                    请提供针对&ldquo;{selectedText}&rdquo;的建议
                   </div>
                 )}
               </div>
 
               <div className="relative">
-                <DeepSeekSuggestion
-                  content={userText}
-                  onApply={handleApplyDeepSeekSuggestion}
-                  wizardSessionId={sessionId}
-                  userId={selectedUser?.id}
-                />
+                {suggestionType === "append" ? (
+                  <DeepSeekSuggestion
+                    content={userText}
+                    onApply={handleApplyDeepSeekSuggestion}
+                    wizardSessionId={sessionId}
+                    userId={selectedUser?.id}
+                  />
+                ) : (
+                  selectedText && (
+                    <DeepSeekFeedback
+                      content={userText}
+                      selectedText={selectedText}
+                      selectedTextPosition={selectedTextPosition}
+                      selectedTextEndPosition={selectedTextEndPosition}
+                      onApply={handleApplyDeepSeekComment}
+                      wizardSessionId={sessionId}
+                      userId={selectedUser?.id}
+                    />
+                  )
+                )}
                 <SuggestionEditor
                   value={suggestion}
                   onChange={handleSuggestionChange}
@@ -578,7 +597,7 @@ export default function WizardPage() {
                         {item.type === "comment" && item.selected_text && (
                           <div className="mb-2">
                             <div className="text-xs text-gray-500 mb-1">
-                              原文:
+                              被评论的内容:
                             </div>
                             <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
                               {item.selected_text}
@@ -588,7 +607,7 @@ export default function WizardPage() {
 
                         <div className="flex flex-col">
                           <div className="text-xs text-gray-500 mb-1">
-                            建议:
+                            {item.type === "append" ? "建议:" : "反馈:"}
                           </div>
                           <div className="text-gray-700 whitespace-pre-wrap text-sm bg-white p-2 rounded border">
                             {item.content}
