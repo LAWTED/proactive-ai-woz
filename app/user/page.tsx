@@ -36,7 +36,8 @@ export default function UserPage() {
     timestamp: string,
     speed: number,
     action?: {
-      type: 'accept' | 'modify' | 'append',
+      type: 'A' | 'F',
+      operation: 'apply' | 'like' | 'reject',
       suggestionId?: number
     }
   }[]>([]);
@@ -379,7 +380,8 @@ export default function UserPage() {
           timestamp: new Date().toISOString(),
           speed: typingSpeed,
           action: {
-            type: 'append',
+            type: 'A',
+            operation: 'apply',
             suggestionId: id
           }
         }]);
@@ -420,7 +422,8 @@ export default function UserPage() {
           timestamp: new Date().toISOString(),
           speed: typingSpeed,
           action: {
-            type: 'append',
+            type: 'A',
+            operation: 'apply',
             suggestionId: id
           }
         }]);
@@ -436,6 +439,9 @@ export default function UserPage() {
   // 处理拒绝建议
   const handleRejectSuggestion = async (id: number) => {
     try {
+      const suggestionToReject = suggestions.find((s) => s.id === id);
+      if (!suggestionToReject) return;
+
       const { error } = await supabase
         .from("suggestions")
         .update({
@@ -445,6 +451,17 @@ export default function UserPage() {
         .eq("id", id);
 
       if (error) throw error;
+
+      // 记录拒绝建议的操作
+      setTypingSpeedRecords(prev => [...prev, {
+        timestamp: new Date().toISOString(),
+        speed: typingSpeed,
+        action: {
+          type: suggestionToReject.type === "append" ? 'A' : 'F',
+          operation: 'reject',
+          suggestionId: id
+        }
+      }]);
 
       // 刷新建议列表
       fetchSuggestions();
@@ -456,6 +473,9 @@ export default function UserPage() {
   // 处理建议点赞
   const handleLikeSuggestion = async (id: number) => {
     try {
+      const suggestionToLike = suggestions.find((s) => s.id === id);
+      if (!suggestionToLike) return;
+
       const { error } = await supabase
         .from("suggestions")
         .update({
@@ -464,6 +484,17 @@ export default function UserPage() {
         .eq("id", id);
 
       if (error) throw error;
+
+      // 记录点赞建议的操作
+      setTypingSpeedRecords(prev => [...prev, {
+        timestamp: new Date().toISOString(),
+        speed: typingSpeed,
+        action: {
+          type: suggestionToLike.type === "append" ? 'A' : 'F',
+          operation: 'like',
+          suggestionId: id
+        }
+      }]);
 
       // 刷新建议列表
       fetchSuggestions();
@@ -479,7 +510,7 @@ export default function UserPage() {
     try {
       // 更新文本
       let newText = text;
-      let actionType: 'modify' | 'append' = 'modify';
+      const actionType: 'A' | 'F' = suggestion.type === "append" ? 'A' : 'F';
 
       if (suggestion.type === "comment" && suggestion.selected_text) {
         // 对于修改类型建议，替换选中的文本
@@ -497,11 +528,9 @@ export default function UserPage() {
               text.substring(suggestion.position);
           }
         }
-        actionType = 'modify';
       } else if (suggestion.type === "append") {
         // 对于添加类型建议，将内容添加到文本末尾
         newText = text + suggestion.content;
-        actionType = 'append';
       }
 
       // 更新文本和数据库
@@ -514,6 +543,7 @@ export default function UserPage() {
         speed: typingSpeed,
         action: {
           type: actionType,
+          operation: 'apply',
           suggestionId: suggestion.id
         }
       }]);
@@ -615,8 +645,15 @@ export default function UserPage() {
     // 图例
     const legends = [
       { color: "#3b82f6", label: "打字速度" },
-      { color: "#f59e0b", label: "修改操作" },
-      { color: "#8b5cf6", label: "添加操作" }
+      { color: "#8b5cf6", label: "添加模式 (A)" },
+      { color: "#f59e0b", label: "反馈模式 (F)" }
+    ];
+
+    // 操作图例
+    const operationLegends = [
+      { symbol: "●", label: "应用" },
+      { symbol: "▲", label: "点赞" },
+      { symbol: "■", label: "拒绝" },
     ];
 
     return (
@@ -652,6 +689,13 @@ export default function UserPage() {
               <span className="text-xs text-gray-600">{legend.label}</span>
             </div>
           ))}
+          <div className="border-l pl-2 ml-2">
+            {operationLegends.map((legend, index) => (
+              <span key={index} className="text-xs text-gray-600 mr-2">
+                {legend.symbol} {legend.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="relative" style={{ height: `${chartHeight + 30}px`, width: '100%' }}>
@@ -718,32 +762,150 @@ export default function UserPage() {
               // 根据操作类型设置不同的样式
               let pointColor = "#3b82f6"; // 默认蓝色
               let pointSize = 3;
+              let shape = "circle"; // 默认形状：圆形
 
               if (record.action) {
                 pointSize = 6; // 操作点更大
 
-                if (record.action.type === 'modify') {
-                  pointColor = "#f59e0b"; // 修改操作黄色
-                } else if (record.action.type === 'append') {
-                  pointColor = "#8b5cf6"; // 添加操作紫色
+                if (record.action.type === 'F') {
+                  pointColor = "#f59e0b"; // 反馈模式黄色
+                } else if (record.action.type === 'A') {
+                  pointColor = "#8b5cf6"; // 添加模式紫色
+                }
+
+                // 根据操作类型设置不同的形状
+                if (record.action.operation === 'like') {
+                  shape = "triangle"; // 点赞：三角形
+                } else if (record.action.operation === 'reject') {
+                  shape = "square"; // 拒绝：方形
                 }
               }
 
               // 只在数据点较少或是操作点时显示
               if (sampledRecords.length < 60 || record.action) {
-                return (
-                  <circle
-                    key={index}
-                    cx={x}
-                    cy={y}
-                    r={pointSize}
-                    fill={pointColor}
-                  />
-                );
+                if (shape === "circle") {
+                  return (
+                    <circle
+                      key={index}
+                      cx={x}
+                      cy={y}
+                      r={pointSize}
+                      fill={pointColor}
+                      onMouseEnter={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'block';
+                          tooltip.style.left = `${x + 10}px`;
+                          tooltip.style.top = `${y - 30}px`;
+
+                          let operationText = '';
+                          if (record.action) {
+                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
+                            operationText += `\n操作: ${
+                              record.action.operation === 'apply' ? '应用' :
+                              record.action.operation === 'like' ? '点赞' : '拒绝'
+                            }`;
+                          }
+
+                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
+速度: ${record.speed} 字符/分钟${operationText}`;
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'none';
+                        }
+                      }}
+                    />
+                  );
+                } else if (shape === "triangle") {
+                  // 三角形
+                  const size = pointSize * 1.5;
+                  return (
+                    <polygon
+                      key={index}
+                      points={`${x},${y-size} ${x+size},${y+size} ${x-size},${y+size}`}
+                      fill={pointColor}
+                      onMouseEnter={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'block';
+                          tooltip.style.left = `${x + 10}px`;
+                          tooltip.style.top = `${y - 30}px`;
+
+                          let operationText = '';
+                          if (record.action) {
+                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
+                            operationText += `\n操作: ${
+                              record.action.operation === 'apply' ? '应用' :
+                              record.action.operation === 'like' ? '点赞' : '拒绝'
+                            }`;
+                          }
+
+                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
+速度: ${record.speed} 字符/分钟${operationText}`;
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'none';
+                        }
+                      }}
+                    />
+                  );
+                } else if (shape === "square") {
+                  // 方形
+                  const size = pointSize * 1.2;
+                  return (
+                    <rect
+                      key={index}
+                      x={x - size/2}
+                      y={y - size/2}
+                      width={size}
+                      height={size}
+                      fill={pointColor}
+                      onMouseEnter={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'block';
+                          tooltip.style.left = `${x + 10}px`;
+                          tooltip.style.top = `${y - 30}px`;
+
+                          let operationText = '';
+                          if (record.action) {
+                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
+                            operationText += `\n操作: ${
+                              record.action.operation === 'apply' ? '应用' :
+                              record.action.operation === 'like' ? '点赞' : '拒绝'
+                            }`;
+                          }
+
+                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
+速度: ${record.speed} 字符/分钟${operationText}`;
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        const tooltip = document.getElementById('chart-tooltip');
+                        if (tooltip) {
+                          tooltip.style.display = 'none';
+                        }
+                      }}
+                    />
+                  );
+                }
               }
               return null;
             })}
           </svg>
+
+          {/* Tooltip */}
+          <div
+            id="chart-tooltip"
+            className="absolute hidden bg-black text-white p-2 rounded text-xs whitespace-pre z-10"
+            style={{ pointerEvents: 'none' }}
+          />
         </div>
         <div className="mt-2 text-xs text-gray-500 text-center">
           总记录数: {records.length} | 图表点数: {sampledRecords.length} | 最大速度: {maxSpeed} 字符/分钟
@@ -760,25 +922,24 @@ export default function UserPage() {
     }
 
     // 创建CSV内容，添加用户操作的标记
-    const csvHeader = 'timestamp,speed,action_type,suggestion_id\n';
+    const csvHeader = 'timestamp,speed,action_type,suggestion_id,operation\n';
     const csvRows = typingSpeedRecords.map(record => {
       let actionType = '';
       let suggestionId = '';
+      let operation = '';
 
       if (record.action) {
-        // 使用特殊符号标记操作类型
-        if (record.action.type === 'modify') {
-          actionType = 'M'; // 修改用M表示
-        } else if (record.action.type === 'append') {
-          actionType = 'A'; // 添加用A表示
-        }
+        // 使用统一的模式标记
+        actionType = record.action.type; // A 或 F
 
         if (record.action.suggestionId) {
           suggestionId = record.action.suggestionId.toString();
         }
+
+        operation = record.action.operation; // apply, like, reject
       }
 
-      return `${record.timestamp},${record.speed},${actionType},${suggestionId}`;
+      return `${record.timestamp},${record.speed},${actionType},${suggestionId},${operation}`;
     }).join('\n');
 
     const csvContent = csvHeader + csvRows;
@@ -871,8 +1032,8 @@ export default function UserPage() {
 
       {showTypingChart && renderTypingSpeedChart()}
 
-      <main className="flex flex-1 p-4">
-        <div className="flex-1 mr-4">
+      <main className="flex flex-1 p-8">
+        <div className="flex-1 mr-4 px-20">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <p>加载数据中...</p>

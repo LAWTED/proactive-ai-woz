@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const response = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: "deepseek-v3",
       messages: [
         {
           role: "system",

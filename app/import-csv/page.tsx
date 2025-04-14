@@ -7,6 +7,7 @@ interface SpeedRecord {
   speed: number;
   action_type: string;
   suggestion_id: string;
+  operation: string;
 }
 
 export default function ImportCSVPage() {
@@ -34,12 +35,13 @@ export default function ImportCSVPage() {
           .slice(1) // 跳过表头
           .filter(line => line.trim()) // 过滤空行
           .map(line => {
-            const [timestamp, speed, action_type = '', suggestion_id = ''] = line.split(',');
+            const [timestamp, speed, action_type = '', suggestion_id = '', operation = ''] = line.split(',');
             return {
               timestamp,
               speed: parseInt(speed, 10),
               action_type,
-              suggestion_id
+              suggestion_id,
+              operation
             };
           });
 
@@ -101,6 +103,13 @@ export default function ImportCSVPage() {
       { color: "#f59e0b", label: "反馈模式 (F)" }
     ];
 
+    // 操作图例
+    const operationLegends = [
+      { symbol: "●", label: "应用" },
+      { symbol: "▲", label: "点赞" },
+      { symbol: "■", label: "拒绝" },
+    ];
+
     // 计算统计信息
     const stats = {
       totalPoints: records.length,
@@ -108,6 +117,9 @@ export default function ImportCSVPage() {
       maxSpeed: Math.max(...records.map(r => r.speed)),
       addCount: records.filter(r => r.action_type === 'A').length,
       feedbackCount: records.filter(r => r.action_type === 'F').length,
+      applyCount: records.filter(r => r.operation === 'apply').length,
+      likeCount: records.filter(r => r.operation === 'like').length,
+      rejectCount: records.filter(r => r.operation === 'reject').length,
       duration: Math.round((new Date(records[records.length - 1].timestamp).getTime() -
                           new Date(records[0].timestamp).getTime()) / 1000 / 60) // 分钟
     };
@@ -133,6 +145,22 @@ export default function ImportCSVPage() {
           </div>
         </div>
 
+        {/* 操作类型统计 */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-green-800">应用</h3>
+            <p className="text-sm text-green-600">次数: {stats.applyCount}</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-800">点赞</h3>
+            <p className="text-sm text-blue-600">次数: {stats.likeCount}</p>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-red-800">拒绝</h3>
+            <p className="text-sm text-red-600">次数: {stats.rejectCount}</p>
+          </div>
+        </div>
+
         {/* 图例 */}
         <div className="flex space-x-4 mb-4">
           {legends.map((legend, index) => (
@@ -144,6 +172,13 @@ export default function ImportCSVPage() {
               <span className="text-xs text-gray-600">{legend.label}</span>
             </div>
           ))}
+          <div className="border-l pl-2 ml-2">
+            {operationLegends.map((legend, index) => (
+              <span key={index} className="text-xs text-gray-600 mr-2">
+                {legend.symbol} {legend.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* 图表 */}
@@ -211,6 +246,7 @@ export default function ImportCSVPage() {
 
               let pointColor = "#3b82f6"; // 默认蓝色
               let pointSize = 3;
+              let shape = "circle"; // 默认形状：圆形
 
               if (record.action_type) {
                 pointSize = 6;
@@ -219,43 +255,110 @@ export default function ImportCSVPage() {
                 } else if (record.action_type === 'A') {
                   pointColor = "#8b5cf6"; // 添加模式紫色
                 }
+
+                // 根据操作类型设置不同的形状
+                if (record.operation === 'like') {
+                  shape = "triangle"; // 点赞：三角形
+                } else if (record.operation === 'reject') {
+                  shape = "square"; // 拒绝：方形
+                }
               }
 
-              return (
-                <circle
-                  key={index}
-                  cx={x}
-                  cy={y}
-                  r={pointSize}
-                  fill={pointColor}
-                  className="transition-all duration-200 hover:r-8"
-                  onMouseEnter={(e) => {
-                    const circle = e.target as SVGCircleElement;
-                    circle.setAttribute('r', '8');
-
-                    // 显示tooltip
-                    const tooltip = document.getElementById('tooltip');
-                    if (tooltip) {
-                      tooltip.style.display = 'block';
-                      tooltip.style.left = `${x + 10}px`;
-                      tooltip.style.top = `${y - 30}px`;
-                      tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleString()}
+              if (shape === "circle") {
+                return (
+                  <circle
+                    key={index}
+                    cx={x}
+                    cy={y}
+                    r={pointSize}
+                    fill={pointColor}
+                    className="transition-all duration-200 hover:r-8"
+                    onMouseEnter={() => {
+                      // 显示tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = `${x + 10}px`;
+                        tooltip.style.top = `${y - 30}px`;
+                        tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleString()}
 速度: ${record.speed}
-操作: ${record.action_type || '无'}`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    const circle = e.target as SVGCircleElement;
-                    circle.setAttribute('r', pointSize.toString());
-
-                    // 隐藏tooltip
-                    const tooltip = document.getElementById('tooltip');
-                    if (tooltip) {
-                      tooltip.style.display = 'none';
-                    }
-                  }}
-                />
-              );
+模式: ${record.action_type || '无'}
+操作: ${record.operation || '无'}`;
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      // 隐藏tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'none';
+                      }
+                    }}
+                  />
+                );
+              } else if (shape === "triangle") {
+                // 三角形 - 点赞操作
+                const size = pointSize * 1.5;
+                return (
+                  <polygon
+                    key={index}
+                    points={`${x},${y-size} ${x+size},${y+size} ${x-size},${y+size}`}
+                    fill={pointColor}
+                    onMouseEnter={() => {
+                      // 显示tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = `${x + 10}px`;
+                        tooltip.style.top = `${y - 30}px`;
+                        tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleString()}
+速度: ${record.speed}
+模式: ${record.action_type || '无'}
+操作: ${record.operation || '无'}`;
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      // 隐藏tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'none';
+                      }
+                    }}
+                  />
+                );
+              } else if (shape === "square") {
+                // 方形 - 拒绝操作
+                const size = pointSize * 1.2;
+                return (
+                  <rect
+                    key={index}
+                    x={x - size/2}
+                    y={y - size/2}
+                    width={size}
+                    height={size}
+                    fill={pointColor}
+                    onMouseEnter={() => {
+                      // 显示tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = `${x + 10}px`;
+                        tooltip.style.top = `${y - 30}px`;
+                        tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleString()}
+速度: ${record.speed}
+模式: ${record.action_type || '无'}
+操作: ${record.operation || '无'}`;
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      // 隐藏tooltip
+                      const tooltip = document.getElementById('tooltip');
+                      if (tooltip) {
+                        tooltip.style.display = 'none';
+                      }
+                    }}
+                  />
+                );
+              }
             })}
           </svg>
 

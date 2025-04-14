@@ -5,6 +5,6 @@ if (!process.env.DEEPSEEK_API_KEY) {
 }
 
 export const openai = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
+  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   apiKey: process.env.DEEPSEEK_API_KEY,
 });
