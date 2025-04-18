@@ -13,6 +13,10 @@ export async function POST(req: Request) {
       );
     }
 
+    // 获取用户原文的最后一个句子, 可以从 , 或者。 或者 等符号开始
+    const lastSentence = prompt.split(/[.,。 ，]|\s/).pop();
+
+    console.log(lastSentence);
     const response = await openai.chat.completions.create({
       model: "deepseek-v3",
       messages: [
@@ -22,11 +26,12 @@ export async function POST(req: Request) {
         },
         {
           role: "user",
-          content: prompt,
+          content: `用户原文: ${prompt}, 请接着用户原文的最后一个句子${lastSentence} 继续补全, 不要重复${lastSentence}。`,
         },
       ],
     });
 
+    console.log(response.choices[0].message.content);
     return NextResponse.json({
       suggestion: response.choices[0].message.content,
     });
