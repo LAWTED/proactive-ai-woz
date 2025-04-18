@@ -210,7 +210,7 @@ export default function DeepSeekFeedback({
               key={suggestion.id}
               className={`inline-flex items-center px-3 py-1 rounded-full ${bgColorClass} text-sm ${textColorClass}`}
             >
-              <span className="font-medium text-gray-700 italic mr-2">&ldquo;{suggestion.text}&rdquo;</span>
+              <span className="font-medium text-gray-700 italic mr-2">{suggestion.text}</span>
               <button
                 onClick={() => handleSend(suggestion)}
                 className={`ml-1 p-0.5 rounded-full ${
