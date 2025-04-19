@@ -42,10 +42,11 @@ export default function UserPage() {
     }
   }[]>([]);
   const [showTypingChart, setShowTypingChart] = useState<boolean>(false);
+  const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const typingRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 初始化会话
+  // 初始化会话 & 获取现有用户
   useEffect(() => {
     // 生成唯一的会话ID
     const newSessionId = `user-${Math.random().toString(36).substring(2, 9)}`;
@@ -59,13 +60,14 @@ export default function UserPage() {
         setUserName(userData.name);
         setUserId(userData.id);
         setIsRegistered(true);
-
-        // 获取用户的文档
         fetchUserDocument(userData.id);
       } catch (error) {
         console.error("Error parsing stored user data:", error);
         localStorage.removeItem("user");
+        fetchExistingUsers(); // Fetch users if login fails or no stored user
       }
+    } else {
+      fetchExistingUsers(); // Fetch users if no stored user
     }
 
     // 组件卸载时清理计时器
@@ -76,6 +78,27 @@ export default function UserPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch existing users from the database
+  const fetchExistingUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name');
+
+      if (error) throw error;
+
+      if (data) {
+        setExistingUsers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching existing users:', error);
+      alert('无法加载现有用户列表');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 监控打字速度并记录
   useEffect(() => {
@@ -232,51 +255,80 @@ export default function UserPage() {
     }
   };
 
-  // 处理用户注册
-  const handleRegister = async (e: React.FormEvent) => {
+  // 处理用户登录或注册
+  const handleLoginOrRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!userName.trim()) {
-      alert("请输入您的名字");
+      alert("请输入或选择一个名字");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 注册用户
-      const { data, error } = await supabase
-        .from("users")
-        .insert([
-          {
-            name: userName,
-            session_id: sessionId,
-          },
-        ])
-        .select();
+      // 检查用户是否已存在
+      const existingUser = existingUsers.find(u => u.name === userName.trim());
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setUserId(data[0].id);
+      if (existingUser) {
+        // 用户存在，执行登录逻辑
+        setUserId(existingUser.id);
         setIsRegistered(true);
 
-        // 保存用户信息到本地存储
+        // 更新本地存储
         localStorage.setItem(
           "user",
           JSON.stringify({
-            id: data[0].id,
-            name: userName,
-            session_id: sessionId,
+            id: existingUser.id,
+            name: userName.trim(),
+            session_id: sessionId, // Update session ID for existing user login
           })
         );
 
-        // 创建新文档
-        createNewDocument(data[0].id);
+        // 获取用户文档
+        fetchUserDocument(existingUser.id);
+        console.log(`用户 ${userName} 登录成功`);
+
+      } else {
+        // 用户不存在，执行注册逻辑
+        const { data, error } = await supabase
+          .from("users")
+          .insert([
+            {
+              name: userName.trim(),
+              session_id: sessionId,
+            },
+          ])
+          .select();
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const newUser = data[0];
+          setUserId(newUser.id);
+          setIsRegistered(true);
+
+          // 保存新用户信息到本地存储
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              id: newUser.id,
+              name: userName.trim(),
+              session_id: sessionId,
+            })
+          );
+
+          // 添加新用户到现有用户列表（用于下次显示）
+          setExistingUsers(prev => [...prev, { id: newUser.id, name: userName.trim() }]);
+
+          // 创建新文档
+          createNewDocument(newUser.id);
+          console.log(`新用户 ${userName} 注册成功`);
+        }
       }
     } catch (error) {
-      console.error("Error registering user:", error);
-      alert("注册失败，请重试");
+      console.error("Error logging in or registering user:", error);
+      alert("登录或注册失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -956,16 +1008,76 @@ export default function UserPage() {
     document.body.removeChild(link);
   };
 
+  // 处理登出
+  const handleLogout = () => {
+    // 清除状态
+    setUserName("");
+    setUserId(null);
+    setIsRegistered(false);
+    setDocumentId(null);
+    setText("");
+    setSuggestions([]);
+    setSuggestion(null);
+    setTypingSpeedRecords([]);
+    setTypingHistory([]);
+    setTypingSpeed(0);
+    setActiveHighlight(null);
+
+    // 清除本地存储
+    localStorage.removeItem("user");
+
+    // 清理计时器
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+    if (typingRecordTimerRef.current) {
+      clearInterval(typingRecordTimerRef.current);
+    }
+  };
+
   // 登录表单
   const renderLoginForm = () => (
     <div className="flex items-center justify-center h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">开始写作</h1>
-          <p className="mt-2 text-gray-600">请输入您的名字以开始写作</p>
+          <p className="mt-2 text-gray-600">请输入您的名字以开始写作，或选择现有用户</p>
         </div>
 
-        <form onSubmit={handleRegister} className="mt-8 space-y-6">
+        <form onSubmit={handleLoginOrRegister} className="mt-8 space-y-6">
+          {/* Existing User Selection Dropdown */}
+          {existingUsers.length > 0 && (
+            <div>
+              <label htmlFor="existing-user" className="block text-sm font-medium text-gray-700">
+                选择现有用户
+              </label>
+              <div className="mt-1">
+                <select
+                  id="existing-user"
+                  name="existing-user"
+                  onChange={(e) => {
+                    const selectedUserId = e.target.value;
+                    const selectedUser = existingUsers.find(u => u.id.toString() === selectedUserId);
+                    if (selectedUser) {
+                      setUserName(selectedUser.name);
+                    } else {
+                      setUserName(""); // Clear name if default option selected
+                    }
+                  }}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- 选择用户 --</option>
+                  {existingUsers.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Name Input */}
           <div>
             <label
               htmlFor="name"
@@ -1025,6 +1137,12 @@ export default function UserPage() {
               className="bg-blue-800 hover:bg-blue-900 text-white text-sm py-1 px-3 rounded transition-colors"
             >
               {showTypingChart ? '隐藏图表' : '显示图表'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded transition-colors"
+            >
+              切换/新用户
             </button>
           </div>
         </div>
