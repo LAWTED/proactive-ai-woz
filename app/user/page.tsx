@@ -151,7 +151,7 @@ export default function UserPage() {
         .from("suggestions")
         .select("*")
         .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
 
