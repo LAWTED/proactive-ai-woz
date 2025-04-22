@@ -22,6 +22,7 @@ interface FeedbackItem {
   text: string;
   visible: boolean;
   isSending?: boolean;
+  label?: string;
 }
 
 export default function DeepSeekFeedback({
@@ -57,33 +58,17 @@ export default function DeepSeekFeedback({
         // Split the suggestion by || to get multiple reactions
         const suggestionsArray: string[] = data.suggestion.split('||');
 
-        // Add each reaction to the list
-        setSuggestions(prev => {
-          const newSuggestions = suggestionsArray.map(suggestionText => ({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Ensure unique IDs
-            text: suggestionText.trim(),
-            visible: true,
-            isSending: false
-          }));
+        // Add each reaction to the list with specific labels
+        const labels = ["润色", "关键词", "读者反馈"];
+        const newSuggestions = suggestionsArray.map((suggestionText, index) => ({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Ensure unique IDs
+          text: suggestionText.trim(),
+          visible: true,
+          isSending: false,
+          label: labels[index % labels.length] // Assign a label based on index
+        }));
 
-          // Count current visible suggestions
-          const visibleCount = prev.filter(s => s.visible).length;
-
-          // If we have too many visible suggestions, hide the oldest ones
-          if (visibleCount + newSuggestions.length > MAX_VISIBLE_SUGGESTIONS) {
-            const visibleSuggestions = [...prev].filter(s => s.visible);
-            const numToHide = Math.min(visibleCount, visibleCount + newSuggestions.length - MAX_VISIBLE_SUGGESTIONS);
-            const idsToHide = visibleSuggestions.slice(0, numToHide).map(s => s.id);
-
-            return [
-              ...prev.map(s => idsToHide.includes(s.id) ? { ...s, visible: false } : s),
-              ...newSuggestions
-            ];
-          }
-
-          // Otherwise just add the new suggestions
-          return [...prev, ...newSuggestions];
-        });
+        setSuggestions(newSuggestions);
       }
     } catch (error) {
       console.error("Failed to fetch comment suggestion:", error);
@@ -168,9 +153,6 @@ export default function DeepSeekFeedback({
     .filter(s => s.visible)
     .slice(0, MAX_VISIBLE_SUGGESTIONS);
 
-  // Count total visible suggestions
-  const totalVisible = suggestions.filter(s => s.visible).length;
-
   // If no selected text, don't show anything
   if (!selectedText.trim()) {
     return null;
@@ -183,113 +165,109 @@ export default function DeepSeekFeedback({
         <p className="text-gray-700 bg-white p-2 rounded border text-sm">{selectedText}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {visibleSuggestions.map(suggestion => {
-          // Determine what type of feedback this is based on its index in the array
-          let bgColorClass = "bg-yellow-50 dark:bg-yellow-900/50";
-          let textColorClass = "text-yellow-600 dark:text-yellow-300";
-
-          // Find the actual index by grouping by creation time
-          const creationTime = suggestion.id.split('+')[0]; // Get timestamp part of ID
-          const sameTimeGroup = visibleSuggestions.filter(s => s.id.startsWith(creationTime));
-          const indexInGroup = sameTimeGroup.findIndex(s => s.id === suggestion.id);
-
-          if (indexInGroup === 0 || indexInGroup % 3 === 0) {
-            bgColorClass = "bg-yellow-50 dark:bg-yellow-900/50";
-            textColorClass = "text-yellow-600 dark:text-yellow-300";
-          } else if (indexInGroup === 1 || indexInGroup % 3 === 1) {
-            bgColorClass = "bg-orange-50 dark:bg-orange-900/50";
-            textColorClass = "text-orange-600 dark:text-orange-300";
-          } else {
-            bgColorClass = "bg-red-50 dark:bg-red-900/50";
-            textColorClass = "text-red-600 dark:text-red-300";
-          }
-
-          return (
-            <div
-              key={suggestion.id}
-              className={`inline-flex items-center px-3 py-1 rounded-full ${bgColorClass} text-sm ${textColorClass}`}
-            >
-              <span className="font-medium text-gray-700 italic mr-2">{suggestion.text}</span>
-              <button
-                onClick={() => handleSend(suggestion)}
-                className={`ml-1 p-0.5 rounded-full ${
-                  suggestion.isSending
-                    ? 'opacity-50 cursor-not-allowed'
-                    : `hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`
-                }`}
-                title="Send as reader reaction"
-                disabled={suggestion.isSending}
-              >
-                {suggestion.isSending ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Check size={16} />
-                )}
-              </button>
-              <button
-                onClick={() => handleApply(suggestion)}
-                className={`ml-1 p-0.5 rounded-full hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`}
-                title="Insert into editor"
-                disabled={suggestion.isSending}
-              >
-                <ArrowDown size={16} />
-              </button>
-              <button
-                onClick={() => handleDismiss(suggestion.id)}
-                className={`ml-1 p-0.5 rounded-full hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`}
-                title="Dismiss"
-                disabled={suggestion.isSending}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          );
-        })}
-
-        {/* Show indicator if there are more suggestions not being displayed */}
-        {totalVisible > MAX_VISIBLE_SUGGESTIONS && (
-          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
-            +{totalVisible - MAX_VISIBLE_SUGGESTIONS} more
-          </div>
-        )}
-
-        {isLoading && (
+      <div className="flex flex-col gap-2">
+        {isLoading ? (
           <>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/50 text-sm text-yellow-600 dark:text-yellow-300">
+            <div className="flex items-center px-3 py-2 rounded-md bg-yellow-50 dark:bg-yellow-900/50 text-sm text-yellow-600 dark:text-yellow-300">
               <Loader2 size={16} className="mr-2 animate-spin" />
-              <span className="font-semibold mr-1">润色:</span>
+              <span className="font-semibold mr-2">润色:</span>
               <span>加载中...</span>
             </div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-900/50 text-sm text-orange-600 dark:text-orange-300">
+            <div className="flex items-center px-3 py-2 rounded-md bg-orange-50 dark:bg-orange-900/50 text-sm text-orange-600 dark:text-orange-300">
               <Loader2 size={16} className="mr-2 animate-spin" />
-              <span className="font-semibold mr-1">关键词:</span>
+              <span className="font-semibold mr-2">关键词:</span>
               <span>加载中...</span>
             </div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300">
+            <div className="flex items-center px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300">
               <Loader2 size={16} className="mr-2 animate-spin" />
-              <span className="font-semibold mr-1">读者反馈:</span>
+              <span className="font-semibold mr-2">读者反馈:</span>
               <span>加载中...</span>
             </div>
           </>
+        ) : (
+          visibleSuggestions.map((suggestion, index) => {
+            // Determine styling based on index
+            let bgColorClass = "bg-yellow-50 dark:bg-yellow-900/50";
+            let textColorClass = "text-yellow-600 dark:text-yellow-300";
+            let label = "润色";
+
+            if (index === 0) {
+              bgColorClass = "bg-yellow-50 dark:bg-yellow-900/50";
+              textColorClass = "text-yellow-600 dark:text-yellow-300";
+              label = "润色";
+            } else if (index === 1) {
+              bgColorClass = "bg-orange-50 dark:bg-orange-900/50";
+              textColorClass = "text-orange-600 dark:text-orange-300";
+              label = "关键词";
+            } else {
+              bgColorClass = "bg-red-50 dark:bg-red-900/50";
+              textColorClass = "text-red-600 dark:text-red-300";
+              label = "读者反馈";
+            }
+
+            return (
+              <div
+                key={suggestion.id}
+                className={`flex w-fit items-center px-3 py-2 rounded-md ${bgColorClass} text-sm ${textColorClass}`}
+              >
+                <span className="font-semibold mr-2">{label}:</span>
+                <span className="mr-2 flex-grow font-medium text-gray-700">{suggestion.text}</span>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleSend(suggestion)}
+                    className={`ml-1 p-1 rounded-full ${
+                      suggestion.isSending
+                        ? 'opacity-50 cursor-not-allowed'
+                        : `hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`
+                    }`}
+                    title="Send as reader reaction"
+                    disabled={suggestion.isSending}
+                  >
+                    {suggestion.isSending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleApply(suggestion)}
+                    className={`ml-1 p-1 rounded-full hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`}
+                    title="Insert into editor"
+                    disabled={suggestion.isSending}
+                  >
+                    <ArrowDown size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDismiss(suggestion.id)}
+                    className={`ml-1 p-1 rounded-full hover:${bgColorClass.replace('50', '100')} dark:hover:${bgColorClass.replace('900/50', '800')}`}
+                    title="Dismiss"
+                    disabled={suggestion.isSending}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
         )}
 
         <button
           onClick={handleNewSuggestion}
-          className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-50 dark:bg-yellow-900/50 text-sm text-yellow-600 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-800"
+          className="flex items-center justify-center px-3 py-2 mt-1 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           disabled={isLoading}
         >
-          <Sparkles size={16} className="mr-1" />
-          新反馈
+          <Sparkles size={16} className="mr-2" />
+          <span>{visibleSuggestions.length > 0 ? "刷新反馈" : "获取反馈"}</span>
         </button>
 
-        {totalVisible > 0 && (
+        {visibleSuggestions.length > 0 && (
           <button
             onClick={handleDismissAll}
-            className="inline-flex items-center px-3 py-1 rounded-full bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="flex items-center justify-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            disabled={isLoading}
           >
-            <X size={16} className="mr-1" />
-            清除全部
+            <X size={16} className="mr-2" />
+            <span>清除所有</span>
           </button>
         )}
       </div>

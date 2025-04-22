@@ -6,6 +6,24 @@ import SuggestionEditor from "@/components/SuggestionEditor";
 import DeepSeekSuggestion from "@/components/DeepSeekSuggestion";
 import DeepSeekFeedback from "@/components/DeepSeekFeedback";
 
+// 添加自定义滚动条样式
+const scrollbarStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c5c5c5;
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+`;
+
 // 定义数据类型
 interface User {
   id: number;
@@ -56,10 +74,16 @@ export default function WizardPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [sentSuggestions, setSentSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionType, setSuggestionType] = useState<"append" | "comment">("append");
+  const [suggestionType, setSuggestionType] = useState<"append" | "comment">(
+    "append"
+  );
   const [isSelectingText, setIsSelectingText] = useState<boolean>(false);
-  const [selectedTextPosition, setSelectedTextPosition] = useState<number | null>(null);
-  const [selectedTextEndPosition, setSelectedTextEndPosition] = useState<number | null>(null);
+  const [selectedTextPosition, setSelectedTextPosition] = useState<
+    number | null
+  >(null);
+  const [selectedTextEndPosition, setSelectedTextEndPosition] = useState<
+    number | null
+  >(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [showUserList, setShowUserList] = useState<boolean>(true);
@@ -433,32 +457,57 @@ export default function WizardPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <style jsx global>{scrollbarStyles}</style>
       <header className="p-4 bg-purple-700 text-white">
         <h1 className="text-xl font-bold">Wizard Control Panel</h1>
       </header>
 
       <main className="flex flex-1">
-        <div className={`bg-gray-100 transition-all duration-300 ${showUserList ? 'w-64' : 'w-12'}`}>
+        <div
+          className={`bg-gray-100 transition-all duration-300 ${
+            showUserList ? "w-64" : "w-12"
+          }`}
+        >
           <div className="flex items-center justify-between p-4">
-            <h2 className={`font-bold ${showUserList ? 'visible' : 'hidden'}`}>在线用户</h2>
+            <h2 className={`font-bold ${showUserList ? "visible" : "hidden"}`}>
+              在线用户
+            </h2>
             <button
               onClick={() => setShowUserList(!showUserList)}
               className="p-1 rounded-full hover:bg-gray-200"
               title={showUserList ? "收起用户列表" : "展开用户列表"}
             >
               {showUserList ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               )}
             </button>
           </div>
 
-          <div className={`px-4 pb-4 ${showUserList ? 'block' : 'hidden'}`}>
+          <div className={`px-4 pb-4 ${showUserList ? "block" : "hidden"}`}>
             {loading ? (
               <p className="text-gray-500">加载中...</p>
             ) : activeUsers.length > 0 ? (
@@ -474,7 +523,9 @@ export default function WizardPage() {
                     onClick={() => handleUserSelect(user)}
                   >
                     <div className="font-medium">{user.name}</div>
-                    <div className="text-xs text-gray-500">{user.session_id}</div>
+                    <div className="text-xs text-gray-500">
+                      {user.session_id}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -486,8 +537,9 @@ export default function WizardPage() {
 
         <div className="flex-1 p-4">
           {selectedUser ? (
-            <>
-              <div className="mb-4">
+            <div className="flex flex-1 gap-4">
+              {/* 左侧：用户内容 */}
+              <div className="w-1/2">
                 <h2 className="font-bold mb-2">
                   用户内容 - {selectedUser.name}
                 </h2>
@@ -505,122 +557,118 @@ export default function WizardPage() {
                   </div>
                 )}
                 <div
-                  className={`p-4 border rounded bg-white min-h-32 whitespace-pre-wrap cursor-text`}
+                  className={`p-4 border rounded bg-white min-h-[calc(100vh-240px)] whitespace-pre-wrap cursor-text overflow-y-auto custom-scrollbar`}
                   onMouseUp={handleTextSelection}
                 >
-                  {userText}
+                  <div className="mb-[100vh]">{userText}</div>
                 </div>
               </div>
 
-              <div className="mb-4">
-                <div className="flex items-center mb-2 justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">
-                      {suggestionType === "append" ? "添加模式" : "反馈模式"}
-                    </span>
-                    <Switch
-                      checked={isSelectingText}
-                      onChange={toggleModeSwitch}
-                    />
-                  </div>
-
-                  {suggestionType === "comment" && selectedText && (
-                    <div className="flex items-center">
-                      <span className="text-sm text-gray-600 mr-1">
-                        已选择:
-                      </span>
-                      <span className="font-medium bg-yellow-50 px-1 py-0.5 rounded border border-yellow-200 max-w-md overflow-hidden text-ellipsis">
-                        {selectedText}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {suggestionType === "comment" && selectedText && (
-                  <div className="mb-2 text-sm text-gray-500">
-                    请提供针对&ldquo;{selectedText}&rdquo;的建议
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                {suggestionType === "append" ? (
-                  <DeepSeekSuggestion
-                    content={userText}
-                    onApply={handleApplyDeepSeekSuggestion}
-                    wizardSessionId={sessionId}
-                    userId={selectedUser?.id}
-                  />
-                ) : (
-                  selectedText && (
-                    <DeepSeekFeedback
-                      content={userText}
-                      selectedText={selectedText}
-                      selectedTextPosition={selectedTextPosition}
-                      selectedTextEndPosition={selectedTextEndPosition}
-                      onApply={handleApplyDeepSeekComment}
-                      wizardSessionId={sessionId}
-                      userId={selectedUser?.id}
-                    />
-                  )
-                )}
-                <SuggestionEditor
-                  value={suggestion}
-                  onChange={handleSuggestionChange}
-                  onSend={handleSendSuggestion}
-                  isSending={isSending}
-                />
-              </div>
-
-              {/* 建议历史记录 */}
-              <div className="mt-6">
-                <h3 className="font-medium text-gray-700 mb-2">
-                  发送的建议历史
-                </h3>
-                {sentSuggestions.length > 0 ? (
-                  <div className="space-y-3">
-                    {sentSuggestions.map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-3 border rounded bg-gray-50 hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center space-x-2">
-                            <div className="text-sm text-gray-500">
-                              {new Date(item.created_at).toLocaleString()}
-                            </div>
-                            {renderTypeBadge(item.type)}
-                          </div>
-                          {renderStatusBadge(item)}
-                        </div>
-
-                        {item.type === "comment" && item.selected_text && (
-                          <div className="mb-2">
-                            <div className="text-xs text-gray-500 mb-1">
-                              被评论的内容:
-                            </div>
-                            <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
-                              {item.selected_text}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex flex-col">
-                          <div className="text-xs text-gray-500 mb-1">
-                            {item.type === "append" ? "建议:" : "反馈:"}
-                          </div>
-                          <div className="text-gray-700 whitespace-pre-wrap text-sm bg-white p-2 rounded border">
-                            {item.content}
-                          </div>
-                        </div>
+              {/* 右侧：操作区域 */}
+              <div className="w-1/2">
+                <div className="sticky top-16 pb-4">
+                  <div className="mb-4">
+                    <div className="flex items-center mb-2 justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">
+                          {suggestionType === "append" ? "添加模式" : "反馈模式"}
+                        </span>
+                        <Switch
+                          checked={isSelectingText}
+                          onChange={toggleModeSwitch}
+                        />
                       </div>
-                    ))}
+                    </div>
+
+                    {suggestionType === "comment" && selectedText && (
+                      <div className="mb-2 text-sm text-gray-500">
+                        请提供针对&ldquo;{selectedText}&rdquo;的建议
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-gray-500">暂无发送给该用户的建议</p>
-                )}
+
+                  <div className="relative">
+                    {suggestionType === "append" ? (
+                      <DeepSeekSuggestion
+                        content={userText}
+                        onApply={handleApplyDeepSeekSuggestion}
+                        wizardSessionId={sessionId}
+                        userId={selectedUser?.id}
+                      />
+                    ) : (
+                      selectedText && (
+                        <DeepSeekFeedback
+                          content={userText}
+                          selectedText={selectedText}
+                          selectedTextPosition={selectedTextPosition}
+                          selectedTextEndPosition={selectedTextEndPosition}
+                          onApply={handleApplyDeepSeekComment}
+                          wizardSessionId={sessionId}
+                          userId={selectedUser?.id}
+                        />
+                      )
+                    )}
+                    <SuggestionEditor
+                      value={suggestion}
+                      onChange={handleSuggestionChange}
+                      onSend={handleSendSuggestion}
+                      isSending={isSending}
+                    />
+                  </div>
+
+                  {/* 建议历史记录 */}
+                  <div className="mt-6 bg-white rounded-lg p-4 shadow-sm">
+                    <h3 className="font-medium text-gray-700 mb-2">
+                      发送的建议历史
+                    </h3>
+                    <div className="max-h-[calc(100vh-650px)] overflow-y-auto pr-2 custom-scrollbar">
+                      {sentSuggestions.length > 0 ? (
+                        <div className="space-y-3">
+                          {sentSuggestions.map((item) => (
+                            <div
+                              key={item.id}
+                              className="p-3 border rounded bg-gray-50 hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="text-sm text-gray-500">
+                                    {new Date(item.created_at).toLocaleString()}
+                                  </div>
+                                  {renderTypeBadge(item.type)}
+                                </div>
+                                {renderStatusBadge(item)}
+                              </div>
+
+                              {item.type === "comment" && item.selected_text && (
+                                <div className="mb-2">
+                                  <div className="text-xs text-gray-500 mb-1">
+                                    被评论的内容:
+                                  </div>
+                                  <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
+                                    {item.selected_text}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex flex-col">
+                                <div className="text-xs text-gray-500 mb-1">
+                                  {item.type === "append" ? "建议:" : "反馈:"}
+                                </div>
+                                <div className="text-gray-700 whitespace-pre-wrap text-sm bg-white p-2 rounded border">
+                                  {item.content}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">暂无发送给该用户的建议</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
               请从左侧选择一个用户来查看其内容并提供建议
