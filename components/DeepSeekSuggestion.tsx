@@ -180,7 +180,7 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
               key={suggestion.id}
               className={`flex w-fit items-center px-3 py-2 rounded-md ${bgColorClass} text-sm ${textColorClass}`}
             >
-              <span className="font-semibold mr-2">{label}:</span>
+              <span className="font-semibold mr-2 shrink-0">{label}:</span>
               <span className="mr-2 flex-grow">{suggestion.text}</span>
               <div className="flex items-center">
                 <button

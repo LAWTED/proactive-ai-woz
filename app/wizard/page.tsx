@@ -580,11 +580,11 @@ export default function WizardPage() {
                       </div>
                     </div>
 
-                    {suggestionType === "comment" && selectedText && (
+                    {/* {suggestionType === "comment" && selectedText && (
                       <div className="mb-2 text-sm text-gray-500">
                         请提供针对&ldquo;{selectedText}&rdquo;的建议
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   <div className="relative">

@@ -210,7 +210,7 @@ export default function DeepSeekFeedback({
                 key={suggestion.id}
                 className={`flex w-fit items-center px-3 py-2 rounded-md ${bgColorClass} text-sm ${textColorClass}`}
               >
-                <span className="font-semibold mr-2">{label}:</span>
+                <span className="font-semibold mr-2 shrink-0">{label}:</span>
                 <span className="mr-2 flex-grow font-medium text-gray-700">{suggestion.text}</span>
                 <div className="flex items-center">
                   <button
