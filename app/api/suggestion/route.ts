@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     console.log(response.choices[0].message.content);
     return NextResponse.json({
       suggestion: response.choices[0].message.content,
+      originalContext: lastSentence,
     });
   } catch (error) {
     console.error("Suggestion API error:", error);
