@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import SuggestionEditor from "@/components/SuggestionEditor";
 import DeepSeekSuggestion from "@/components/DeepSeekSuggestion";
 import DeepSeekFeedback from "@/components/DeepSeekFeedback";
+import { useSearchParams } from "next/navigation";
 
 // 添加自定义滚动条样式
 const scrollbarStyles = `
@@ -67,6 +68,7 @@ interface SuggestionData {
 }
 
 export default function WizardPage() {
+  const searchParams = useSearchParams();
   const [userText, setUserText] = useState<string>("");
   const [suggestion, setSuggestion] = useState<string>("");
   const [sessionId, setSessionId] = useState<string>("");
@@ -74,9 +76,12 @@ export default function WizardPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [sentSuggestions, setSentSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionType, setSuggestionType] = useState<"append" | "comment">(
-    "append"
-  );
+
+  // Get suggestion type from URL parameters, default to "append"
+  const suggestionType = (
+    searchParams.get("mode") === "comment" ? "comment" : "append"
+  ) as "append" | "comment";
+
   const [isSelectingText, setIsSelectingText] = useState<boolean>(false);
   const [selectedTextPosition, setSelectedTextPosition] = useState<
     number | null
@@ -252,7 +257,6 @@ export default function WizardPage() {
     setSelectedTextPosition(null);
     setSelectedTextEndPosition(null);
     setSelectedText("");
-    setSuggestionType("append");
   };
 
   // 更新建议内容
@@ -262,6 +266,9 @@ export default function WizardPage() {
 
   // 处理文本选择
   const handleTextSelection = () => {
+    // 只在 comment 模式下允许文本选择
+    if (suggestionType !== "comment") return;
+
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
@@ -277,13 +284,10 @@ export default function WizardPage() {
         setSelectedTextEndPosition(endOffset);
         setSelectedText(selectedContent);
 
-        // 自动切换到修改模式
-        setSuggestionType("comment");
-
         // 自动打开选择模式
         setIsSelectingText(true);
       } else if (selectedText) {
-        // 如果是清空选择，自动切换回添加模式
+        // 如果是清空选择，重置选择状态
         resetSelectionState();
       }
     }
@@ -354,17 +358,6 @@ export default function WizardPage() {
     }
   };
 
-  // 切换模式 Switch
-  const toggleModeSwitch = () => {
-    if (isSelectingText) {
-      // 关闭选择模式
-      resetSelectionState();
-    } else {
-      // 打开选择模式
-      setIsSelectingText(true);
-    }
-  };
-
   const handleApplyDeepSeekSuggestion = (suggestion: string) => {
     setSuggestion(suggestion);
   };
@@ -431,35 +424,27 @@ export default function WizardPage() {
     }
   };
 
-  // Switch 组件
-  const Switch = ({
-    checked,
-    onChange,
-  }: {
-    checked: boolean;
-    onChange: () => void;
-  }) => (
-    <div
-      className={`relative inline-block w-12 h-6 rounded-full cursor-pointer transition-colors ${
-        checked ? "bg-yellow-400" : "bg-purple-400"
-      }`}
-      onClick={onChange}
-    >
-      <span
-        className={`block w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-        style={{ marginTop: "2px" }}
-      />
-      <span className="sr-only">切换模式</span>
-    </div>
-  );
-
   return (
     <div className="flex min-h-screen flex-col">
-      <style jsx global>{scrollbarStyles}</style>
+      <style jsx global>
+        {scrollbarStyles}
+      </style>
       <header className="p-4 bg-purple-700 text-white">
-        <h1 className="text-xl font-bold">Wizard Control Panel</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Wizard Control Panel</h1>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm opacity-75">模式:</span>
+            <span
+              className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                suggestionType === "append"
+                  ? "bg-purple-600 text-white"
+                  : "bg-yellow-500 text-white"
+              }`}
+            >
+              {suggestionType === "append" ? "添加" : "反馈"}
+            </span>
+          </div>
+        </div>
       </header>
 
       <main className="flex flex-1">
@@ -570,19 +555,33 @@ export default function WizardPage() {
                   <div className="mb-4">
                     <div className="flex items-center mb-2 justify-between">
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">
-                          {suggestionType === "append" ? "添加模式" : "反馈模式"}
+                        <span className="text-sm text-gray-600 font-medium">
+                          当前模式:{" "}
+                          {suggestionType === "append"
+                            ? "添加模式"
+                            : "反馈模式"}
                         </span>
-                        <Switch
-                          checked={isSelectingText}
-                          onChange={toggleModeSwitch}
-                        />
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            suggestionType === "append"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {suggestionType === "append" ? "添加" : "反馈"}
+                        </span>
                       </div>
                     </div>
 
                     {suggestionType === "comment" && selectedText && (
                       <div className="mb-2 text-sm text-gray-500">
                         请提供针对&ldquo;{selectedText}&rdquo;的建议
+                      </div>
+                    )}
+
+                    {suggestionType === "comment" && !selectedText && (
+                      <div className="mb-2 text-sm text-orange-600">
+                        请先选择文本来添加反馈建议
                       </div>
                     )}
                   </div>
@@ -639,16 +638,17 @@ export default function WizardPage() {
                                 {renderStatusBadge(item)}
                               </div>
 
-                              {item.type === "comment" && item.selected_text && (
-                                <div className="mb-2">
-                                  <div className="text-xs text-gray-500 mb-1">
-                                    被评论的内容:
+                              {item.type === "comment" &&
+                                item.selected_text && (
+                                  <div className="mb-2">
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      被评论的内容:
+                                    </div>
+                                    <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
+                                      {item.selected_text}
+                                    </div>
                                   </div>
-                                  <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
-                                    {item.selected_text}
-                                  </div>
-                                </div>
-                              )}
+                                )}
 
                               <div className="flex flex-col">
                                 <div className="text-xs text-gray-500 mb-1">
