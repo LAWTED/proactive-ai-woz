@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import SuggestionEditor from "@/components/SuggestionEditor";
 import DeepSeekSuggestion from "@/components/DeepSeekSuggestion";
@@ -67,7 +67,7 @@ interface SuggestionData {
   selected_text?: string;
 }
 
-export default function WizardPage() {
+function WizardContent() {
   const searchParams = useSearchParams();
   const [userText, setUserText] = useState<string>("");
   const [suggestion, setSuggestion] = useState<string>("");
@@ -681,5 +681,22 @@ export default function WizardPage() {
         Wizard Session ID: {sessionId}
       </footer>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function WizardPageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-gray-500">Loading wizard...</div>
+    </div>
+  );
+}
+
+export default function WizardPage() {
+  return (
+    <Suspense fallback={<WizardPageLoading />}>
+      <WizardContent />
+    </Suspense>
   );
 }
