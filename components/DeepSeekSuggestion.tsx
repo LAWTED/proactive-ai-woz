@@ -123,10 +123,8 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
   };
 
   const handleDismissAll = () => {
-    // Hide all suggestions
-    setSuggestions(prev =>
-      prev.map(s => ({ ...s, visible: false }))
-    );
+    // Clear all suggestions completely
+    setSuggestions([]);
   };
 
   const handleNewSuggestion = () => {
