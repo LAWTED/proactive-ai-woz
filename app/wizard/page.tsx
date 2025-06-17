@@ -82,14 +82,8 @@ function WizardContent() {
     searchParams.get("mode") === "comment" ? "comment" : "append"
   ) as "append" | "comment";
 
-  const [isSelectingText, setIsSelectingText] = useState<boolean>(false);
-  const [selectedTextPosition, setSelectedTextPosition] = useState<
-    number | null
-  >(null);
-  const [selectedTextEndPosition, setSelectedTextEndPosition] = useState<
-    number | null
-  >(null);
-  const [selectedText, setSelectedText] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [selectedText, setSelectedText] = useState<string>(""); // 保留用于向后兼容，虽然评论模式不再使用
   const [isSending, setIsSending] = useState<boolean>(false);
   const [showUserList, setShowUserList] = useState<boolean>(true);
 
@@ -253,9 +247,6 @@ function WizardContent() {
 
   // 重置选择状态
   const resetSelectionState = () => {
-    setIsSelectingText(false);
-    setSelectedTextPosition(null);
-    setSelectedTextEndPosition(null);
     setSelectedText("");
   };
 
@@ -264,39 +255,7 @@ function WizardContent() {
     setSuggestion(newSuggestion);
   };
 
-  // 处理文本选择
-  const handleTextSelection = () => {
-    // 只在 comment 模式下允许文本选择
-    if (suggestionType !== "comment") return;
 
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const startOffset = range.startOffset;
-      const endOffset = range.endOffset;
-
-      // 确保有选择文本
-      if (startOffset !== endOffset) {
-        const selectedContent = selection.toString();
-
-        // 设置选择文本的信息
-        setSelectedTextPosition(startOffset);
-        setSelectedTextEndPosition(endOffset);
-        setSelectedText(selectedContent);
-
-        // 自动打开选择模式
-        setIsSelectingText(true);
-      } else if (selectedText) {
-        // 如果是清空选择，重置选择状态
-        resetSelectionState();
-      }
-    }
-  };
-
-  // 取消文本选择
-  const handleCancelSelect = () => {
-    resetSelectionState();
-  };
 
   // 发送建议
   const handleSendSuggestion = async () => {
@@ -314,20 +273,7 @@ function WizardContent() {
         type: suggestionType,
       };
 
-      // 如果是评论类型，添加位置和选择的文本信息
-      if (suggestionType === "comment") {
-        if (selectedTextPosition !== null) {
-          suggestionData.position = selectedTextPosition;
-
-          if (selectedTextEndPosition !== null) {
-            suggestionData.end_position = selectedTextEndPosition;
-          }
-
-          if (selectedText) {
-            suggestionData.selected_text = selectedText;
-          }
-        }
-      }
+      // 评论类型建议不再需要位置信息，因为它们是对整体内容的评论
 
       // 将建议保存到数据库
       const { data, error } = await supabase
@@ -528,22 +474,8 @@ function WizardContent() {
                 <h2 className="font-bold mb-2">
                   用户内容 - {selectedUser.name}
                 </h2>
-                {isSelectingText && (
-                  <div className="mb-2 flex items-center text-sm">
-                    <span className="text-blue-600 font-medium">
-                      请选择要添加读者反应的文本
-                    </span>
-                    <button
-                      onClick={handleCancelSelect}
-                      className="ml-2 text-red-600 hover:underline"
-                    >
-                      取消
-                    </button>
-                  </div>
-                )}
                 <div
-                  className={`p-4 border rounded bg-white min-h-[calc(100vh-240px)] whitespace-pre-wrap cursor-text overflow-y-auto custom-scrollbar`}
-                  onMouseUp={handleTextSelection}
+                  className={`p-4 border rounded bg-white min-h-[calc(100vh-240px)] whitespace-pre-wrap overflow-y-auto custom-scrollbar`}
                 >
                   <div className="mb-[100vh]">{userText}</div>
                 </div>
@@ -573,17 +505,7 @@ function WizardContent() {
                       </div>
                     </div>
 
-                    {suggestionType === "comment" && selectedText && (
-                      <div className="mb-2 text-sm text-gray-500">
-                        请提供针对&ldquo;{selectedText}&rdquo;的建议
-                      </div>
-                    )}
 
-                    {suggestionType === "comment" && !selectedText && (
-                      <div className="mb-2 text-sm text-orange-600">
-                        请先选择文本来添加反馈建议
-                      </div>
-                    )}
                   </div>
 
                   <div className="relative">
@@ -595,17 +517,12 @@ function WizardContent() {
                         userId={selectedUser?.id}
                       />
                     ) : (
-                      selectedText && (
-                        <DeepSeekFeedback
-                          content={userText}
-                          selectedText={selectedText}
-                          selectedTextPosition={selectedTextPosition}
-                          selectedTextEndPosition={selectedTextEndPosition}
-                          onApply={handleApplyDeepSeekComment}
-                          wizardSessionId={sessionId}
-                          userId={selectedUser?.id}
-                        />
-                      )
+                      <DeepSeekFeedback
+                        content={userText}
+                        onApply={handleApplyDeepSeekComment}
+                        wizardSessionId={sessionId}
+                        userId={selectedUser?.id}
+                      />
                     )}
                     <SuggestionEditor
                       value={suggestion}
@@ -638,14 +555,13 @@ function WizardContent() {
                                 {renderStatusBadge(item)}
                               </div>
 
-                              {item.type === "comment" &&
-                                item.selected_text && (
+                              {item.selected_text && (
                                   <div className="mb-2">
                                     <div className="text-xs text-gray-500 mb-1">
-                                      被评论的内容:
+                                      {item.type === "comment" ? "被评论的内容:" : "基于原文:"}
                                     </div>
                                     <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
-                                      {item.selected_text}
+                                      &ldquo;{item.selected_text}&rdquo;
                                     </div>
                                   </div>
                                 )}

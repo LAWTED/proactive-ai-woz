@@ -9,9 +9,6 @@ const MAX_VISIBLE_SUGGESTIONS = 3;
 
 interface DeepSeekFeedbackProps {
   content: string;
-  selectedText: string;
-  selectedTextPosition?: number | null;
-  selectedTextEndPosition?: number | null;
   onApply: (suggestion: string) => void;
   wizardSessionId?: string;
   userId?: number;
@@ -20,15 +17,13 @@ interface DeepSeekFeedbackProps {
 interface FeedbackItem {
   id: string;
   text: string;
+  originalContext: string;
   visible: boolean;
   isSending?: boolean;
 }
 
 export default function DeepSeekFeedback({
   content,
-  selectedText,
-  selectedTextPosition,
-  selectedTextEndPosition,
   onApply,
   wizardSessionId,
   userId
@@ -37,7 +32,7 @@ export default function DeepSeekFeedback({
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSuggestion = useCallback(async () => {
-    if (!selectedText.trim()) return;
+    if (!content.trim()) return;
 
     setIsLoading(true);
     try {
@@ -47,8 +42,7 @@ export default function DeepSeekFeedback({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: content,
-          selectedText: selectedText
+          prompt: content,
         }),
       });
 
@@ -59,6 +53,7 @@ export default function DeepSeekFeedback({
           const newSuggestion = {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             text: data.suggestion.trim(),
+            originalContext: data.originalContext || "",
             visible: true,
             isSending: false
           };
@@ -78,15 +73,12 @@ export default function DeepSeekFeedback({
     } finally {
       setIsLoading(false);
     }
-  }, [content, selectedText]);
+  }, [content]);
 
   useEffect(() => {
-    // Only trigger if we have selected text
-    if (selectedText.trim()) {
-      const debounceTimer = setTimeout(fetchSuggestion, 500);
-      return () => clearTimeout(debounceTimer);
-    }
-  }, [fetchSuggestion, selectedText]);
+    const debounceTimer = setTimeout(fetchSuggestion, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [fetchSuggestion]);
 
   // Apply suggestion to editor
   const handleApply = (suggestion: FeedbackItem) => {
@@ -100,7 +92,6 @@ export default function DeepSeekFeedback({
   // Send comment suggestion to user
   const handleSend = async (suggestion: FeedbackItem) => {
     if (!wizardSessionId || !userId || suggestion.isSending) return;
-    if (selectedTextPosition === null || selectedTextPosition === undefined) return;
 
     // Mark this suggestion as sending
     setSuggestions(prev =>
@@ -113,9 +104,7 @@ export default function DeepSeekFeedback({
         user_id: userId,
         wizard_session_id: wizardSessionId,
         type: 'comment',
-        position: selectedTextPosition,
-        end_position: selectedTextEndPosition,
-        selected_text: selectedText
+        selected_text: suggestion.originalContext // 保存原文上下文
       });
 
       // Hide suggestion after sending successfully
@@ -140,10 +129,8 @@ export default function DeepSeekFeedback({
   };
 
   const handleDismissAll = () => {
-    // Hide all suggestions
-    setSuggestions(prev =>
-      prev.map(s => ({ ...s, visible: false }))
-    );
+    // Clear all suggestions completely
+    setSuggestions([]);
   };
 
   const handleNewSuggestion = () => {
@@ -159,34 +146,36 @@ export default function DeepSeekFeedback({
   // Count total visible suggestions
   const totalVisible = suggestions.filter(s => s.visible).length;
 
-  // If no selected text, don't show anything
-  if (!selectedText.trim()) {
-    return null;
-  }
-
   return (
-    <div className="mb-2 mt-2">
-      <div className="p-2 mb-2 bg-yellow-50 rounded-md border border-yellow-200">
-        <p className="text-sm text-gray-500 mb-1">已选择文本:</p>
-        <p className="text-gray-700 bg-white p-2 rounded border text-sm">{selectedText}</p>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {isLoading && (
-          <div className="flex items-center px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300">
+    <div className="mb-4 flex flex-col gap-2">
+      {isLoading && (
+        <div className="flex flex-col px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300">
+          <div className="flex items-center mb-2">
             <Loader2 size={16} className="mr-2 animate-spin" />
-            <span className="font-semibold mr-2 shrink-0">读者反馈:</span>
-            <span>加载中...</span>
+            <span className="font-semibold">读者反馈: 加载中...</span>
           </div>
-        )}
+        </div>
+      )}
 
-        {visibleSuggestions.map((suggestion) => (
-          <div
-            key={suggestion.id}
-            className="flex items-center px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300"
-          >
+      {visibleSuggestions.map((suggestion) => (
+        <div
+          key={suggestion.id}
+          className="flex flex-col px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300"
+        >
+          {/* 显示原文上下文 */}
+          {suggestion.originalContext && (
+            <div className="mb-2">
+              <div className="text-xs text-gray-500 mb-1">原文:</div>
+              <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono border">
+                &ldquo;{suggestion.originalContext}&rdquo;
+              </div>
+            </div>
+          )}
+
+          {/* 显示建议内容和操作按钮 */}
+          <div className="flex items-center">
             <span className="font-semibold mr-2 shrink-0">读者反馈:</span>
-            <span className="mr-2 flex-grow font-medium text-gray-700">{suggestion.text}</span>
+            <span className="mr-2 flex-grow">{suggestion.text}</span>
             <div className="flex items-center">
               <button
                 onClick={() => handleSend(suggestion)}
@@ -222,35 +211,35 @@ export default function DeepSeekFeedback({
               </button>
             </div>
           </div>
-        ))}
+        </div>
+      ))}
 
-        {/* Show indicator if there are more suggestions not being displayed */}
-        {totalVisible > MAX_VISIBLE_SUGGESTIONS && (
-          <div className="flex items-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
-            +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多反馈
-          </div>
-        )}
+      {/* Show indicator if there are more suggestions not being displayed */}
+      {totalVisible > MAX_VISIBLE_SUGGESTIONS && (
+        <div className="flex items-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
+          +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多反馈
+        </div>
+      )}
 
+      <button
+        onClick={handleNewSuggestion}
+        className="flex items-center justify-center px-3 py-2 mt-1 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+        disabled={isLoading}
+      >
+        <Sparkles size={16} className="mr-2" />
+        <span>{visibleSuggestions.length > 0 ? "刷新反馈" : "获取反馈"}</span>
+      </button>
+
+      {visibleSuggestions.length > 0 && (
         <button
-          onClick={handleNewSuggestion}
-          className="flex items-center justify-center px-3 py-2 mt-1 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          onClick={handleDismissAll}
+          className="flex items-center justify-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           disabled={isLoading}
         >
-          <Sparkles size={16} className="mr-2" />
-          <span>{visibleSuggestions.length > 0 ? "刷新反馈" : "获取反馈"}</span>
+          <X size={16} className="mr-2" />
+          <span>清除所有</span>
         </button>
-
-        {visibleSuggestions.length > 0 && (
-          <button
-            onClick={handleDismissAll}
-            className="flex items-center justify-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            disabled={isLoading}
-          >
-            <X size={16} className="mr-2" />
-            <span>清除所有</span>
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

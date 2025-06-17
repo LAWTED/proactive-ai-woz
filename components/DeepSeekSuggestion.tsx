@@ -98,7 +98,8 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
         content: suggestion.text,
         user_id: userId,
         wizard_session_id: wizardSessionId,
-        type: 'append'
+        type: 'append',
+        selected_text: suggestion.originalContext // 保存原文上下文
       });
 
       // Hide suggestion after sending successfully
