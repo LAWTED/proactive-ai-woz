@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Check, X, Sparkles, Loader2, ArrowDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // Maximum number of suggestions to show at once
 const MAX_VISIBLE_SUGGESTIONS = 3;
+// Throttle interval for automatic requests (10 seconds)
+const THROTTLE_INTERVAL = 10000;
 
 interface DeepSeekFeedbackProps {
   content: string;
@@ -30,10 +32,19 @@ export default function DeepSeekFeedback({
 }: DeepSeekFeedbackProps) {
   const [suggestions, setSuggestions] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const lastRequestTimeRef = useRef<number>(0);
 
-  const fetchSuggestion = useCallback(async () => {
+  const fetchSuggestion = useCallback(async (isManual = false) => {
     if (!content.trim()) return;
 
+    // Check throttle for automatic requests
+    const now = Date.now();
+    if (!isManual && now - lastRequestTimeRef.current < THROTTLE_INTERVAL) {
+      console.log('Throttled: Skipping automatic request, last request was', Math.round((now - lastRequestTimeRef.current) / 1000), 'seconds ago');
+      return;
+    }
+
+    lastRequestTimeRef.current = now;
     setIsLoading(true);
     try {
       const response = await fetch("/api/comment-suggestion", {
@@ -135,7 +146,7 @@ export default function DeepSeekFeedback({
 
   const handleNewSuggestion = () => {
     setIsLoading(true);
-    fetchSuggestion();
+    fetchSuggestion(true); // Manual request, bypass throttle
   };
 
   // Filter to only show visible suggestions

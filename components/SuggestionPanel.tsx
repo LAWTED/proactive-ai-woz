@@ -204,15 +204,18 @@ export default function SuggestionPanel({
                 {/* 未处理建议的操作按钮 */}
                 {!item.reaction && !item.is_accepted && (
                   <div className="flex space-x-2 mt-3">
-                    <button
-                      onClick={() => onApply(item)}
-                      className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      应用
-                    </button>
+                    {/* 只有补全类型才显示应用按钮 */}
+                    {item.type === 'append' && (
+                      <button
+                        onClick={() => onApply(item)}
+                        className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors flex items-center"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        应用
+                      </button>
+                    )}
                     <button
                       onClick={() => onLike(item.id)}
                       className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors flex items-center"
