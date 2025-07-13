@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `我在阅读一篇文章，特别是看到这段文字："${lastSentence}"，请像普通读者一样给出你的真实、简短的反应。\n\n完整文档内容: ${prompt}\n\n像在聊天时那样回应，用口语化的语言，表达你对这段文字的第一反应（1-2句话）。`,
+          content: `用户原文: ${prompt}, 请针对用户原文的最后一个句子${lastSentence} 给出你的建议。`,
         },
       ],
     });

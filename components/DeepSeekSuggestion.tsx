@@ -179,7 +179,7 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-blue-100 dark:hover:bg-blue-800'
                 }`}
-                title="发送建议"
+                title="发送补全"
                 disabled={suggestion.isSending}
               >
                 {suggestion.isSending ? (
@@ -212,7 +212,7 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
       {/* Show indicator if there are more suggestions not being displayed */}
       {totalVisible > MAX_VISIBLE_SUGGESTIONS && (
         <div className="flex items-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
-          +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多建议
+          +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多补全
         </div>
       )}
 
@@ -222,7 +222,7 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
         disabled={isLoading}
       >
         <Sparkles size={16} className="mr-2" />
-        <span>{visibleSuggestions.length > 0 ? "刷新建议" : "获取建议"}</span>
+        <span>{visibleSuggestions.length > 0 ? "刷新补全" : "获取补全"}</span>
       </button>
 
       {visibleSuggestions.length > 0 && (

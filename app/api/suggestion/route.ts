@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         },
         {
           role: "user",
-          content: `用户原文: ${prompt}, 请接着用户原文的最后一个句子${lastSentence} 继续补全, 不要重复${lastSentence}。`,
+          content: `用户原文: ${prompt}, 请接着用户原文的最后一个句子${lastSentence} 继续补全。`,
         },
       ],
     });

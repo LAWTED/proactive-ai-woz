@@ -82,7 +82,7 @@ export default function SuggestionPanel({
   return (
     <div className="fixed top-20 right-8 bottom-8 w-96 bg-white shadow-lg rounded-lg p-4 flex flex-col overflow-hidden">
       <h2 className="font-bold mb-4 flex items-center justify-between flex-shrink-0">
-        <span>AI 建议</span>
+        <span>AI 补全/建议</span>
         <div className="flex items-center space-x-2">
           <label className="flex items-center text-xs font-normal text-gray-600 cursor-pointer">
             <input
@@ -105,7 +105,7 @@ export default function SuggestionPanel({
       {activeSuggestion && (
         <div className="border rounded p-3 mb-4 bg-blue-50">
           <div className="flex items-center justify-between mb-2">
-            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">添加</span>
+            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">补全</span>
             <span className="text-xs text-gray-500">{new Date(activeSuggestion.created_at).toLocaleString()}</span>
           </div>
           <textarea
@@ -155,9 +155,9 @@ export default function SuggestionPanel({
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
                     {item.type === 'append' ? (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">添加</span>
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">补全</span>
                     ) : (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">修改</span>
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">建议</span>
                     )}
                     <div className="text-xs text-gray-500">
                       {new Date(item.created_at).toLocaleString()}
@@ -171,7 +171,7 @@ export default function SuggestionPanel({
                   <div className="mb-2 flex items-start">
                     <div className="flex-grow">
                       <div className="text-xs text-gray-500 mb-1">
-                        {item.type === 'comment' ? '原文:' : '基于原文:'}
+                        {item.type === 'comment' ? '针对内容:' : '基于原文:'}
                       </div>
                       <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono relative">
                         &ldquo;{item.selected_text}&rdquo;
@@ -195,7 +195,7 @@ export default function SuggestionPanel({
 
                 {/* 建议内容 */}
                 <div className="flex flex-col">
-                  <div className="text-xs text-gray-500 mb-1">建议:</div>
+                  <div className="text-xs text-gray-500 mb-1">{item.type === 'comment' ? '建议:' : '补全:'}:</div>
                   <div className="text-gray-700 whitespace-pre-wrap text-sm bg-white p-2 rounded border">
                     {item.content}
                   </div>
@@ -238,7 +238,7 @@ export default function SuggestionPanel({
           } else {
             return (
               <div className="flex-1 flex items-center justify-center text-gray-500 italic p-4">
-                {showOnlyPending ? '暂无未处理的AI建议' : '暂无AI建议'}
+                {showOnlyPending ? '暂无未处理的AI补全/建议' : '暂无AI补全/建议'}
               </div>
             );
           }

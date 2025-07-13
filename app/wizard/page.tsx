@@ -357,14 +357,14 @@ function WizardContent() {
   const renderTypeBadge = (type: "append" | "comment") => {
     if (type === "append") {
       return (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-          添加
+        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+          补全
         </span>
       );
     } else {
       return (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-          反馈
+        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+          建议
         </span>
       );
     }
@@ -383,11 +383,11 @@ function WizardContent() {
             <span
               className={`px-2 py-1 text-xs font-semibold rounded-full ${
                 suggestionType === "append"
-                  ? "bg-purple-600 text-white"
-                  : "bg-yellow-500 text-white"
+                  ? "bg-blue-600 text-white"
+                  : "bg-red-500 text-white"
               }`}
             >
-              {suggestionType === "append" ? "添加" : "反馈"}
+              {suggestionType === "append" ? "补全" : "建议"}
             </span>
           </div>
         </div>
@@ -490,17 +490,17 @@ function WizardContent() {
                         <span className="text-sm text-gray-600 font-medium">
                           当前模式:{" "}
                           {suggestionType === "append"
-                            ? "添加模式"
-                            : "反馈模式"}
+                            ? "补全模式"
+                            : "建议模式"}
                         </span>
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded-full ${
                             suggestionType === "append"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {suggestionType === "append" ? "添加" : "反馈"}
+                          {suggestionType === "append" ? "补全" : "建议"}
                         </span>
                       </div>
                     </div>
@@ -558,7 +558,7 @@ function WizardContent() {
                               {item.selected_text && (
                                   <div className="mb-2">
                                     <div className="text-xs text-gray-500 mb-1">
-                                      {item.type === "comment" ? "被评论的内容:" : "基于原文:"}
+                                      {item.type === "comment" ? "针对内容:" : "基于原文:"}
                                     </div>
                                     <div className="bg-gray-100 p-2 rounded text-sm text-gray-700 font-mono">
                                       &ldquo;{item.selected_text}&rdquo;
@@ -568,7 +568,7 @@ function WizardContent() {
 
                               <div className="flex flex-col">
                                 <div className="text-xs text-gray-500 mb-1">
-                                  {item.type === "append" ? "建议:" : "反馈:"}
+                                  {item.type === "append" ? "补全:" : "建议:"}
                                 </div>
                                 <div className="text-gray-700 whitespace-pre-wrap text-sm bg-white p-2 rounded border">
                                   {item.content}

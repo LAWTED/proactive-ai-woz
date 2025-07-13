@@ -30,7 +30,7 @@ export default function SuggestionEditor({
   return (
     <div className="border rounded p-2 bg-white">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium mb-1">创建建议</h2>
+        <h2 className="text-sm font-medium mb-1">创建补全/建议</h2>
 
         <p className="text-xs text-gray-500 mt-0.5">
           按下 Ctrl+Enter 或 Cmd+Enter 发送
@@ -42,7 +42,7 @@ export default function SuggestionEditor({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="写一个能帮助用户的建议..."
+          placeholder="写一个能帮助用户的补全或建议..."
           disabled={isSending}
         />
       </div>
@@ -51,7 +51,7 @@ export default function SuggestionEditor({
         <button
           onClick={onSend}
           disabled={!value.trim() || isSending}
-          className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           {isSending ? (
             <>

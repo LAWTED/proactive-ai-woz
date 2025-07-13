@@ -152,7 +152,7 @@ export default function DeepSeekFeedback({
         <div className="flex flex-col px-3 py-2 rounded-md bg-red-50 dark:bg-red-900/50 text-sm text-red-600 dark:text-red-300">
           <div className="flex items-center mb-2">
             <Loader2 size={16} className="mr-2 animate-spin" />
-            <span className="font-semibold">读者反馈: 加载中...</span>
+            <span className="font-semibold">建议: 加载中...</span>
           </div>
         </div>
       )}
@@ -174,7 +174,7 @@ export default function DeepSeekFeedback({
 
           {/* 显示建议内容和操作按钮 */}
           <div className="flex items-center">
-            <span className="font-semibold mr-2 shrink-0">读者反馈:</span>
+            <span className="font-semibold mr-2 shrink-0">建议:</span>
             <span className="mr-2 flex-grow">{suggestion.text}</span>
             <div className="flex items-center">
               <button
@@ -184,7 +184,7 @@ export default function DeepSeekFeedback({
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-red-100 dark:hover:bg-red-800'
                 }`}
-                title="发送读者反馈"
+                title="发送建议"
                 disabled={suggestion.isSending}
               >
                 {suggestion.isSending ? (
@@ -217,7 +217,7 @@ export default function DeepSeekFeedback({
       {/* Show indicator if there are more suggestions not being displayed */}
       {totalVisible > MAX_VISIBLE_SUGGESTIONS && (
         <div className="flex items-center px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
-          +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多反馈
+          +{totalVisible - MAX_VISIBLE_SUGGESTIONS} 更多建议
         </div>
       )}
 
@@ -227,7 +227,7 @@ export default function DeepSeekFeedback({
         disabled={isLoading}
       >
         <Sparkles size={16} className="mr-2" />
-        <span>{visibleSuggestions.length > 0 ? "刷新反馈" : "获取反馈"}</span>
+        <span>{visibleSuggestions.length > 0 ? "刷新建议" : "获取建议"}</span>
       </button>
 
       {visibleSuggestions.length > 0 && (
