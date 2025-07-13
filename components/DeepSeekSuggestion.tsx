@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Check, X, Sparkles, Loader2, ArrowDown } from "lucide-react";
+import { throttle } from "lodash";
 import { supabase } from "@/lib/supabase";
 
 // Maximum number of suggestions to show at once
 const MAX_VISIBLE_SUGGESTIONS = 3;
-// Throttle interval for automatic requests (3 seconds)
-const THROTTLE_INTERVAL = 3000;
 
 interface DeepSeekSuggestionProps {
   content: string;
@@ -27,19 +26,10 @@ interface SuggestionItem {
 export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, userId }: DeepSeekSuggestionProps) {
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const lastRequestTimeRef = useRef<number>(0);
 
-  const fetchSuggestion = useCallback(async (isManual = false) => {
+  const fetchSuggestionInternal = useCallback(async () => {
     if (!content.trim()) return;
 
-    // Check throttle for automatic requests
-    const now = Date.now();
-    if (!isManual && now - lastRequestTimeRef.current < THROTTLE_INTERVAL) {
-      console.log('Throttled: Skipping automatic request, last request was', Math.round((now - lastRequestTimeRef.current) / 1000), 'seconds ago');
-      return;
-    }
-
-    lastRequestTimeRef.current = now;
     setIsLoading(true);
     try {
       const response = await fetch("/api/suggestion", {
@@ -81,10 +71,24 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
     }
   }, [content]);
 
+  // Create throttled version with trailing call support
+  const throttledFetchSuggestion = useMemo(
+    () => throttle(fetchSuggestionInternal, 3000, {
+      leading: true,   // Execute immediately on first call
+      trailing: true   // Execute final call after throttle period
+    }),
+    [fetchSuggestionInternal]
+  );
+
+  // Manual fetch function that bypasses throttling
+  const fetchSuggestionManual = useCallback(async () => {
+    await fetchSuggestionInternal();
+  }, [fetchSuggestionInternal]);
+
   useEffect(() => {
-    const debounceTimer = setTimeout(fetchSuggestion, 500);
+    const debounceTimer = setTimeout(throttledFetchSuggestion, 500);
     return () => clearTimeout(debounceTimer);
-  }, [fetchSuggestion]);
+  }, [throttledFetchSuggestion]);
 
   // Apply suggestion to editor (insert)
   const handleApply = (suggestion: SuggestionItem) => {
@@ -141,7 +145,7 @@ export default function DeepSeekSuggestion({ content, onApply, wizardSessionId, 
 
   const handleNewSuggestion = () => {
     setIsLoading(true);
-    fetchSuggestion(true); // Manual request, bypass throttle
+    fetchSuggestionManual(); // Manual request, bypass throttle
   };
 
   // Filter to only show visible suggestions
