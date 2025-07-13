@@ -6,8 +6,8 @@ import { supabase } from "@/lib/supabase";
 
 // Maximum number of suggestions to show at once
 const MAX_VISIBLE_SUGGESTIONS = 3;
-// Throttle interval for automatic requests (10 seconds)
-const THROTTLE_INTERVAL = 10000;
+// Throttle interval for automatic requests (3 seconds)
+const THROTTLE_INTERVAL = 3000;
 
 interface DeepSeekSuggestionProps {
   content: string;
