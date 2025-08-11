@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         },
         {
           role: "user",
-          content: `用户原文: ${prompt}, 请接着用户原文的最后一个句子${lastSentence} 继续补全。`,
+          content: `用户原文: ${prompt}\n\n请接着用户原文的最后一个句子"${lastSentence}"继续补全。`,
         },
       ],
     });
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       suggestion: response.choices[0].message.content,
       originalContext: lastSentence,
+      fullText: prompt, // 保存完整原文
     });
   } catch (error) {
     console.error("Suggestion API error:", error);

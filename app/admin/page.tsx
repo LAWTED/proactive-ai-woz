@@ -29,6 +29,7 @@ interface Suggestion {
   position?: number;
   end_position?: number;
   selected_text?: string;
+  full_text?: string; // 新字段：完整原文
   reaction?: "like" | "apply" | "reject";
   created_at: string;
 }
@@ -129,7 +130,7 @@ export default function AdminPage() {
       'user_id', 'user_name', 'session_id', 'user_created_at',
       'document_id', 'document_content_length', 'document_content', 'document_created_at', 'document_updated_at', 'document_edit_duration_minutes',
       'suggestion_id', 'suggestion_type', 'suggestion_content_length', 'suggestion_content', 'suggestion_is_accepted', 
-      'suggestion_reaction', 'suggestion_created_at', 'wizard_session_id', 'suggestion_position', 'suggestion_end_position', 'selected_text',
+      'suggestion_reaction', 'suggestion_created_at', 'wizard_session_id', 'suggestion_position', 'suggestion_end_position', 'selected_text', 'full_text',
       'user_suggestion_count', 'user_acceptance_rate', 'user_document_count'
     ]);
 
@@ -163,6 +164,7 @@ export default function AdminPage() {
             suggestion.position || '',
             suggestion.end_position || '',
             suggestion.selected_text || '',
+            suggestion.full_text || '',
             user.suggestionCount,
             acceptanceRate + '%',
             user.documentCount
@@ -212,6 +214,7 @@ export default function AdminPage() {
           suggestion.position || '',
           suggestion.end_position || '',
           suggestion.selected_text || '',
+          suggestion.full_text || '',
           user.suggestionCount,
           acceptanceRate + '%',
           user.documentCount
@@ -224,7 +227,7 @@ export default function AdminPage() {
         user.user.name,
         user.user.session_id,
         user.user.created_at,
-        '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+        '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
         user.suggestionCount,
         acceptanceRate + '%',
         user.documentCount
@@ -255,6 +258,170 @@ export default function AdminPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // 导出单个用户的写作时间快照数据为CSV
+  const exportUserWritingSnapshotsToCSV = async (userId: number, userName: string) => {
+    try {
+      setLoading(true);
+      
+      // 获取特定用户的写作时间快照数据
+      const { data: snapshots, error } = await supabase
+        .from('writing_snapshots')
+        .select('*')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: true });
+
+      if (error) throw error;
+
+      if (!snapshots || snapshots.length === 0) {
+        alert(`用户 ${userName} 没有写作时间快照数据`);
+        return;
+      }
+
+      // 创建CSV内容
+      const csvData = [];
+      
+      // CSV头部
+      csvData.push([
+        'snapshot_id', 'session_id', 'timestamp', 'text_length', 'word_count', 
+        'sentence_count', 'typing_speed', 'last_sentence', 'full_text_preview', 'created_at'
+      ]);
+
+      // 添加数据行
+      snapshots.forEach(snapshot => {
+        const fullTextPreview = snapshot.full_text ? 
+          snapshot.full_text.substring(0, 200) + (snapshot.full_text.length > 200 ? '...' : '') : '';
+        
+        csvData.push([
+          snapshot.id,
+          snapshot.session_id,
+          snapshot.timestamp,
+          snapshot.text_length,
+          snapshot.word_count,
+          snapshot.sentence_count,
+          snapshot.typing_speed,
+          snapshot.last_sentence || '',
+          fullTextPreview,
+          snapshot.created_at
+        ]);
+      });
+
+      // 转换为CSV格式
+      const csvContent = csvData.map(row => 
+        row.map(cell => {
+          const cellStr = String(cell || '');
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      ).join('\n');
+
+      // 下载CSV文件
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `writing-snapshots-${userName}-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log(`已导出用户 ${userName} 的 ${snapshots.length} 条写作时间快照记录`);
+      
+    } catch (error) {
+      console.error('导出用户写作时间快照失败:', error);
+      alert('导出失败，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 导出所有用户的写作时间快照数据为CSV
+  const exportAllWritingSnapshotsToCSV = async () => {
+    try {
+      setLoading(true);
+      
+      // 获取所有写作时间快照数据
+      const { data: snapshots, error } = await supabase
+        .from('writing_snapshots')
+        .select(`
+          *,
+          users!writing_snapshots_user_id_fkey(name)
+        `)
+        .order('timestamp', { ascending: true });
+
+      if (error) throw error;
+
+      if (!snapshots || snapshots.length === 0) {
+        alert('没有可导出的写作时间快照数据');
+        return;
+      }
+
+      // 创建CSV内容
+      const csvData = [];
+      
+      // CSV头部
+      csvData.push([
+        'snapshot_id', 'user_id', 'user_name', 'session_id', 'timestamp',
+        'text_length', 'word_count', 'sentence_count', 'typing_speed',
+        'last_sentence', 'full_text_preview', 'created_at'
+      ]);
+
+      // 添加数据行
+      snapshots.forEach(snapshot => {
+        const fullTextPreview = snapshot.full_text ? 
+          snapshot.full_text.substring(0, 100) + (snapshot.full_text.length > 100 ? '...' : '') : '';
+        
+        csvData.push([
+          snapshot.id,
+          snapshot.user_id,
+          snapshot.users?.name || '',
+          snapshot.session_id,
+          snapshot.timestamp,
+          snapshot.text_length,
+          snapshot.word_count,
+          snapshot.sentence_count,
+          snapshot.typing_speed,
+          snapshot.last_sentence || '',
+          fullTextPreview,
+          snapshot.created_at
+        ]);
+      });
+
+      // 转换为CSV格式
+      const csvContent = csvData.map(row => 
+        row.map(cell => {
+          const cellStr = String(cell || '');
+          // 如果包含逗号、换行符或引号，需要用引号包围并转义
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      ).join('\n');
+
+      // 下载CSV文件
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `writing-snapshots-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log(`已导出 ${snapshots.length} 条写作时间快照记录`);
+      
+    } catch (error) {
+      console.error('导出写作时间快照失败:', error);
+      alert('导出失败，请重试');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportAllUsersDataToCSV = () => {
@@ -375,17 +542,77 @@ export default function AdminPage() {
       return;
     }
 
-    const selectedUsers = userData.filter(user => selectedUserIds.has(user.user.id));
-    const zip = new JSZip();
-
-    // 为每个用户生成CSV文件并添加到ZIP
-    selectedUsers.forEach(user => {
-      const csvContent = generateUserCSVContent(user);
-      const fileName = `${user.user.name}-详细数据-${user.user.id}.csv`;
-      zip.file(fileName, csvContent);
-    });
-
     try {
+      setLoading(true);
+      const selectedUsers = userData.filter(user => selectedUserIds.has(user.user.id));
+      const zip = new JSZip();
+
+      // 为每个用户生成详细数据CSV和写作快照CSV
+      for (const user of selectedUsers) {
+        // 1. 生成详细数据CSV
+        const detailCSVContent = generateUserCSVContent(user);
+        const detailFileName = `${user.user.name}-详细数据-${user.user.id}.csv`;
+        zip.file(detailFileName, detailCSVContent);
+
+        // 2. 生成写作时间快照CSV
+        try {
+          const { data: snapshots, error } = await supabase
+            .from('writing_snapshots')
+            .select('*')
+            .eq('user_id', user.user.id)
+            .order('timestamp', { ascending: true });
+
+          if (error) throw error;
+
+          if (snapshots && snapshots.length > 0) {
+            // 创建快照CSV内容
+            const snapshotCSVData = [];
+            
+            // CSV头部
+            snapshotCSVData.push([
+              'snapshot_id', 'session_id', 'timestamp', 'text_length', 'word_count', 
+              'sentence_count', 'typing_speed', 'last_sentence', 'full_text_preview', 'created_at'
+            ]);
+
+            // 添加数据行
+            snapshots.forEach(snapshot => {
+              const fullTextPreview = snapshot.full_text ? 
+                snapshot.full_text.substring(0, 300) + (snapshot.full_text.length > 300 ? '...' : '') : '';
+              
+              snapshotCSVData.push([
+                snapshot.id,
+                snapshot.session_id,
+                snapshot.timestamp,
+                snapshot.text_length,
+                snapshot.word_count,
+                snapshot.sentence_count,
+                snapshot.typing_speed,
+                snapshot.last_sentence || '',
+                fullTextPreview,
+                snapshot.created_at
+              ]);
+            });
+
+            // 转换为CSV格式
+            const snapshotCSVContent = snapshotCSVData.map(row => 
+              row.map(cell => {
+                const cellStr = String(cell || '');
+                if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+                  return `"${cellStr.replace(/"/g, '""')}"`;
+                }
+                return cellStr;
+              }).join(',')
+            ).join('\n');
+
+            const snapshotFileName = `${user.user.name}-写作快照-${user.user.id}.csv`;
+            zip.file(snapshotFileName, snapshotCSVContent);
+          }
+        } catch (snapshotError) {
+          console.error(`获取用户 ${user.user.name} 的写作快照失败:`, snapshotError);
+          // 即使快照获取失败，也继续处理其他用户
+        }
+      }
+
       // 生成ZIP文件
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
@@ -393,7 +620,7 @@ export default function AdminPage() {
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `选中用户详细数据-${selectedUserIds.size}人-${new Date().toISOString().split('T')[0]}.zip`);
+      link.setAttribute('download', `选中用户完整数据-${selectedUserIds.size}人-${new Date().toISOString().split('T')[0]}.zip`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -401,9 +628,13 @@ export default function AdminPage() {
       
       // 清理URL对象
       URL.revokeObjectURL(url);
+      console.log(`已导出 ${selectedUsers.length} 个用户的完整数据ZIP文件`);
+      
     } catch (error) {
       console.error('生成ZIP文件失败:', error);
       alert('导出失败，请重试');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -451,6 +682,12 @@ export default function AdminPage() {
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
               >
                 导出所有用户摘要CSV
+              </button>
+              <button
+                onClick={exportAllWritingSnapshotsToCSV}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                导出所有时间快照CSV
               </button>
             </div>
           </div>
@@ -505,6 +742,12 @@ export default function AdminPage() {
                     className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                   >
                     导出详细CSV
+                  </button>
+                  <button
+                    onClick={() => exportUserWritingSnapshotsToCSV(user.user.id, user.user.name)}
+                    className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm"
+                  >
+                    导出快照CSV
                   </button>
                 </div>
               </div>

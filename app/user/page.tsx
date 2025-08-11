@@ -15,6 +15,7 @@ interface Suggestion {
   position?: number;
   end_position?: number;
   selected_text?: string;
+  full_text?: string; // 新字段：完整原文
   reaction?: "like" | "apply" | "reject";
   created_at: string;
 }
@@ -43,8 +44,15 @@ export default function UserPage() {
   }[]>([]);
   const [showTypingChart, setShowTypingChart] = useState<boolean>(false);
   const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
+  const [writingPositionRecords, setWritingPositionRecords] = useState<{
+    timestamp: string,
+    textLength: number,
+    lastSentence: string,
+    wordCount: number
+  }[]>([]);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const typingRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const positionRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 初始化会话 & 获取现有用户
   useEffect(() => {
@@ -74,6 +82,9 @@ export default function UserPage() {
     return () => {
       if (typingRecordTimerRef.current) {
         clearInterval(typingRecordTimerRef.current);
+      }
+      if (positionRecordTimerRef.current) {
+        clearInterval(positionRecordTimerRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +141,77 @@ export default function UserPage() {
       }
     };
   }, [typingSpeed]); // 添加typingSpeed作为依赖项
+
+  // 每10秒记录用户写作时间快照
+  useEffect(() => {
+    positionRecordTimerRef.current = setInterval(async () => {
+      if (userId && sessionId && text.length > 0) { // 确保有用户ID、会话ID且有文本时记录
+        const now = new Date();
+        
+        // 获取最后一句话作为位置标识
+        let lastSentence = '';
+        const sentences = text.split(/[。！？!?]/).filter(s => s.trim());
+        if (sentences.length > 0) {
+          lastSentence = sentences[sentences.length - 1].trim().substring(0, 20); // 取最后一句的前20个字符
+        } else {
+          // 如果没有句号，取最后20个字符
+          lastSentence = text.slice(-20);
+        }
+        
+        // 计算词数和句子数
+        const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        const sentenceCount = text.split(/[。！？!?]/).filter(s => s.trim()).length;
+        
+        // 保存到本地状态（用于图表显示）
+        const positionRecord = {
+          timestamp: now.toISOString(),
+          textLength: text.length,
+          lastSentence: lastSentence,
+          wordCount: wordCount
+        };
+        
+        setWritingPositionRecords(prev => {
+          const newRecords = [...prev, positionRecord];
+          // 保留最近1小时的记录 (360条记录，每10秒一条)
+          if (newRecords.length > 360) {
+            return newRecords.slice(-180); // 保留最近半小时
+          }
+          return newRecords;
+        });
+        
+        // 保存到数据库
+        try {
+          const { error } = await supabase
+            .from('writing_snapshots')
+            .insert({
+              user_id: userId,
+              session_id: sessionId,
+              timestamp: now.toISOString(),
+              text_length: text.length,
+              word_count: wordCount,
+              sentence_count: sentenceCount,
+              last_sentence: lastSentence,
+              typing_speed: typingSpeed,
+              full_text: text // 保存完整文本快照
+            });
+
+          if (error) {
+            console.error('保存写作快照失败:', error);
+          } else {
+            console.log(`时间快照已保存: 字符数${text.length}, 词数${wordCount}, 句子数${sentenceCount}, 速度${typingSpeed}, 时间: ${now.toISOString()}`);
+          }
+        } catch (error) {
+          console.error('保存写作快照出错:', error);
+        }
+      }
+    }, 10000); // 每10秒记录一次
+
+    return () => {
+      if (positionRecordTimerRef.current) {
+        clearInterval(positionRecordTimerRef.current);
+      }
+    };
+  }, [text, userId, sessionId, typingSpeed]); // 依赖text、userId、sessionId和typingSpeed
 
   // 设置Supabase订阅
   useEffect(() => {
@@ -1008,6 +1090,35 @@ export default function UserPage() {
     document.body.removeChild(link);
   };
 
+  // 导出写作位置记录为CSV
+  const exportPositionRecordsToCSV = () => {
+    if (writingPositionRecords.length === 0) {
+      alert('没有可导出的写作位置记录');
+      return;
+    }
+
+    // 创建CSV内容
+    const csvHeader = 'timestamp,text_length,word_count,last_sentence\n';
+    const csvRows = writingPositionRecords.map(record => {
+      // 处理可能包含逗号的最后一句话
+      const cleanLastSentence = record.lastSentence.replace(/"/g, '""'); // CSV转义
+      return `${record.timestamp},${record.textLength},${record.wordCount},"${cleanLastSentence}"`;
+    }).join('\n');
+
+    const csvContent = csvHeader + csvRows;
+
+    // 创建Blob并生成下载链接
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `writing-position-${sessionId}-${new Date().toISOString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // 处理登出
   const handleLogout = () => {
     // 清除状态
@@ -1022,6 +1133,7 @@ export default function UserPage() {
     setTypingHistory([]);
     setTypingSpeed(0);
     setActiveHighlight(null);
+    setWritingPositionRecords([]); // 清除写作位置记录
 
     // 清除本地存储
     localStorage.removeItem("user");
@@ -1032,6 +1144,9 @@ export default function UserPage() {
     }
     if (typingRecordTimerRef.current) {
       clearInterval(typingRecordTimerRef.current);
+    }
+    if (positionRecordTimerRef.current) {
+      clearInterval(positionRecordTimerRef.current);
     }
   };
 
@@ -1130,7 +1245,13 @@ export default function UserPage() {
               onClick={exportSpeedRecordsToCSV}
               className="bg-blue-800 hover:bg-blue-900 text-white text-sm py-1 px-3 rounded transition-colors"
             >
-              导出CSV
+              导出速度CSV
+            </button>
+            <button
+              onClick={exportPositionRecordsToCSV}
+              className="bg-green-600 hover:bg-green-700 text-white text-sm py-1 px-3 rounded transition-colors"
+            >
+              导出位置CSV
             </button>
             <button
               onClick={() => setShowTypingChart(!showTypingChart)}
@@ -1183,7 +1304,7 @@ export default function UserPage() {
       </main>
 
       <footer className="p-4 bg-gray-100 text-center text-gray-500 text-sm">
-        Session ID: {sessionId} | 累计记录点: {typingSpeedRecords.length} | 当前速度: {typingSpeed} 字符/分钟
+        Session ID: {sessionId} | 速度记录: {typingSpeedRecords.length} | 位置记录: {writingPositionRecords.length} | 当前速度: {typingSpeed} 字符/分钟
       </footer>
     </div>
   );

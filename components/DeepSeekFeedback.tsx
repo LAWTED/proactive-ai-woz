@@ -19,6 +19,7 @@ interface FeedbackItem {
   id: string;
   text: string;
   originalContext: string;
+  fullText?: string; // 完整原文
   visible: boolean;
   isSending?: boolean;
 }
@@ -55,6 +56,7 @@ export default function DeepSeekFeedback({
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             text: data.suggestion.trim(),
             originalContext: data.originalContext || "",
+            fullText: data.fullText || "", // 保存完整原文
             visible: true,
             isSending: false
           };
@@ -78,7 +80,7 @@ export default function DeepSeekFeedback({
 
   // Create throttled version with trailing call support
   const throttledFetchSuggestion = useMemo(
-    () => throttle(fetchSuggestionInternal, 3000, {
+    () => throttle(fetchSuggestionInternal, 10000, {
       leading: true,   // Execute immediately on first call
       trailing: true   // Execute final call after throttle period
     }),
@@ -119,7 +121,8 @@ export default function DeepSeekFeedback({
         user_id: userId,
         wizard_session_id: wizardSessionId,
         type: 'comment',
-        selected_text: suggestion.originalContext // 保存原文上下文
+        selected_text: suggestion.originalContext, // 保持原逻辑，只保存最后一句
+        full_text: suggestion.fullText // 新字段：保存完整原文
       });
 
       // Hide suggestion after sending successfully

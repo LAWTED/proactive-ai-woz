@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `用户原文: ${prompt}, 请针对用户原文的最后一个句子${lastSentence} 给出你的建议。`,
+          content: `用户原文: ${prompt}\n\n请针对用户原文的最后一个句子"${lastSentence}"给出你的建议。`,
         },
       ],
     });
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       suggestion: response.choices[0].message.content,
       originalContext: lastSentence,
+      fullText: prompt, // 保存完整原文
     });
   } catch (error) {
     console.error("Comment suggestion API error:", error);

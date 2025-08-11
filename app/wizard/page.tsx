@@ -43,6 +43,7 @@ interface Suggestion {
   position?: number;
   end_position?: number;
   selected_text?: string;
+  full_text?: string; // 新字段：完整原文
   reaction?: "like" | "apply" | "reject";
   created_at: string;
 }
