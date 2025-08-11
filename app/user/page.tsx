@@ -142,7 +142,7 @@ export default function UserPage() {
         clearInterval(positionRecordTimerRef.current);
       }
     };
-  }, [text, userId, sessionId]); // 依赖text、userId、sessionId
+  }, [userId, sessionId]); // 只依赖userId、sessionId，不依赖text避免频繁重置定时器
 
   // 设置Supabase订阅
   useEffect(() => {
