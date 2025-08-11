@@ -31,18 +31,6 @@ export default function UserPage() {
   const [documentId, setDocumentId] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
-  const [typingSpeed, setTypingSpeed] = useState<number>(0);
-  const [typingHistory, setTypingHistory] = useState<{time: number, length: number}[]>([]);
-  const [typingSpeedRecords, setTypingSpeedRecords] = useState<{
-    timestamp: string,
-    speed: number,
-    action?: {
-      type: 'A' | 'F',
-      operation: 'apply' | 'like' | 'reject',
-      suggestionId?: number
-    }
-  }[]>([]);
-  const [showTypingChart, setShowTypingChart] = useState<boolean>(false);
   const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [writingPositionRecords, setWritingPositionRecords] = useState<{
@@ -51,8 +39,6 @@ export default function UserPage() {
     lastSentence: string,
     wordCount: number
   }[]>([]);
-  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const typingRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const positionRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 初始化会话 & 获取现有用户
@@ -81,9 +67,6 @@ export default function UserPage() {
 
     // 组件卸载时清理计时器
     return () => {
-      if (typingRecordTimerRef.current) {
-        clearInterval(typingRecordTimerRef.current);
-      }
       if (positionRecordTimerRef.current) {
         clearInterval(positionRecordTimerRef.current);
       }
@@ -112,36 +95,6 @@ export default function UserPage() {
     }
   };
 
-  // 监控打字速度并记录
-  useEffect(() => {
-    // 启动定时记录打字速度的计时器（每1秒记录一次，无论是否打字）
-    typingRecordTimerRef.current = setInterval(() => {
-      const now = new Date();
-      // 记录当前时间点的打字速度，即使是0
-      setTypingSpeedRecords(prev => [...prev, {
-        timestamp: now.toISOString(),
-        speed: typingSpeed
-      }]);
-
-      // 控制记录的总数量，防止内存占用过大
-      setTypingSpeedRecords(prev => {
-        if (prev.length > 3600) { // 最多保留1小时的数据(3600秒)
-          return prev.slice(-1800); // 保留最近半小时
-        }
-        return prev;
-      });
-
-      if (typingSpeed > 0) {
-        console.log(`记录打字速度: ${typingSpeed} 字符/分钟, 时间: ${now.toISOString()}`);
-      }
-    }, 1000); // 改为每秒记录一次
-
-    return () => {
-      if (typingRecordTimerRef.current) {
-        clearInterval(typingRecordTimerRef.current);
-      }
-    };
-  }, [typingSpeed]); // 添加typingSpeed作为依赖项
 
   // 每10秒记录用户写作时间快照
   useEffect(() => {
@@ -192,14 +145,14 @@ export default function UserPage() {
               word_count: wordCount,
               sentence_count: sentenceCount,
               last_sentence: lastSentence,
-              typing_speed: typingSpeed,
+              typing_speed: 0, // 不再实时计算速度，后续可通过快照差值分析
               full_text: text // 保存完整文本快照
             });
 
           if (error) {
             console.error('保存写作快照失败:', error);
           } else {
-            console.log(`时间快照已保存: 字符数${text.length}, 词数${wordCount}, 句子数${sentenceCount}, 速度${typingSpeed}, 时间: ${now.toISOString()}`);
+            console.log(`时间快照已保存: 字符数${text.length}, 词数${wordCount}, 句子数${sentenceCount}, 时间: ${now.toISOString()}`);
           }
         } catch (error) {
           console.error('保存写作快照出错:', error);
@@ -212,7 +165,7 @@ export default function UserPage() {
         clearInterval(positionRecordTimerRef.current);
       }
     };
-  }, [text, userId, sessionId, typingSpeed]); // 依赖text、userId、sessionId和typingSpeed
+  }, [text, userId, sessionId]); // 依赖text、userId、sessionId
 
   // 设置Supabase订阅
   useEffect(() => {
@@ -427,54 +380,12 @@ export default function UserPage() {
   const handleTextChange = (newText: string) => {
     setText(newText);
 
-    // 更新打字历史，记录当前时间和文本长度
-    const now = Date.now();
-    setTypingHistory(prev => [...prev, { time: now, length: newText.length }]);
-
-    // 每次输入时重置计时器
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-    }
-
-    // 设置新的计时器，在用户停止输入1秒后清零打字速度
-    typingTimerRef.current = setTimeout(() => {
-      setTypingSpeed(0);
-    }, 2000);
-
-    // 计算打字速度 (字符/分钟)
-    calculateTypingSpeed();
-
     // 更新文档内容
     if (documentId && userId) {
       updateDocument(newText);
     }
   };
 
-  // 计算打字速度
-  const calculateTypingSpeed = () => {
-    const now = Date.now();
-    const recentHistory = typingHistory.filter(entry => now - entry.time < 10000); // 只考虑最近10秒的输入
-
-    if (recentHistory.length > 1) {
-      const oldestEntry = recentHistory[0];
-      const newestEntry = recentHistory[recentHistory.length - 1];
-      const elapsedTimeInMinutes = (newestEntry.time - oldestEntry.time) / 60000; // 转换为分钟
-
-      if (elapsedTimeInMinutes > 0) {
-        const characterCount = newestEntry.length - oldestEntry.length;
-        // 只有字符数有变化时才更新速度
-        if (characterCount !== 0) {
-          const speed = Math.round(characterCount / elapsedTimeInMinutes);
-          setTypingSpeed(speed);
-
-          // 保持历史记录在合理大小
-          if (typingHistory.length > 100) {
-            setTypingHistory(prev => prev.slice(-50));
-          }
-        }
-      }
-    }
-  };
 
   // 更新文档
   const updateDocument = async (content: string) => {
@@ -516,16 +427,7 @@ export default function UserPage() {
         setText(newText);
         updateDocument(newText);
 
-        // 记录接受建议的操作
-        setTypingSpeedRecords(prev => [...prev, {
-          timestamp: new Date().toISOString(),
-          speed: typingSpeed,
-          action: {
-            type: 'A',
-            operation: 'apply',
-            suggestionId: id
-          }
-        }]);
+        // 接受建议的操作已通过suggestion状态更新记录
       }
 
       // 刷新建议列表
@@ -558,16 +460,7 @@ export default function UserPage() {
         setText(newText);
         updateDocument(newText);
 
-        // 记录部分接受建议的操作
-        setTypingSpeedRecords(prev => [...prev, {
-          timestamp: new Date().toISOString(),
-          speed: typingSpeed,
-          action: {
-            type: 'A',
-            operation: 'apply',
-            suggestionId: id
-          }
-        }]);
+        // 部分接受建议的操作已通过suggestion状态更新记录
       }
 
       // 刷新建议列表
@@ -593,16 +486,7 @@ export default function UserPage() {
 
       if (error) throw error;
 
-      // 记录拒绝建议的操作
-      setTypingSpeedRecords(prev => [...prev, {
-        timestamp: new Date().toISOString(),
-        speed: typingSpeed,
-        action: {
-          type: suggestionToReject.type === "append" ? 'A' : 'F',
-          operation: 'reject',
-          suggestionId: id
-        }
-      }]);
+      // 拒绝建议的操作已通过suggestion状态更新记录
 
       // 刷新建议列表
       fetchSuggestions();
@@ -626,16 +510,7 @@ export default function UserPage() {
 
       if (error) throw error;
 
-      // 记录点赞建议的操作
-      setTypingSpeedRecords(prev => [...prev, {
-        timestamp: new Date().toISOString(),
-        speed: typingSpeed,
-        action: {
-          type: suggestionToLike.type === "append" ? 'A' : 'F',
-          operation: 'like',
-          suggestionId: id
-        }
-      }]);
+      // 点赞建议的操作已通过suggestion状态更新记录
 
       // 刷新建议列表
       fetchSuggestions();
@@ -651,7 +526,6 @@ export default function UserPage() {
     try {
       // 更新文本
       let newText = text;
-      const actionType: 'A' | 'F' = suggestion.type === "append" ? 'A' : 'F';
 
       if (suggestion.type === "comment" && suggestion.selected_text) {
         // 对于修改类型建议，替换选中的文本
@@ -678,16 +552,7 @@ export default function UserPage() {
       setText(newText);
       updateDocument(newText);
 
-      // 记录应用修改的操作
-      setTypingSpeedRecords(prev => [...prev, {
-        timestamp: new Date().toISOString(),
-        speed: typingSpeed,
-        action: {
-          type: actionType,
-          operation: 'apply',
-          suggestionId: suggestion.id
-        }
-      }]);
+      // 应用修改的操作已通过suggestion状态更新记录
 
       // 更新建议状态
       const { error } = await supabase
@@ -720,382 +585,7 @@ export default function UserPage() {
     }
   };
 
-  // 渲染打字速度图表
-  const renderTypingSpeedChart = () => {
-    // 获取所有的速度记录，因为我们想显示速度为0的情况
-    const records = typingSpeedRecords;
 
-    if (records.length === 0) {
-      return <div className="p-4 text-center text-gray-500">暂无打字速度数据（等待记录中...）</div>;
-    }
-
-    // 处理可能的数据量过大问题
-    // 如果数据点过多，进行采样以提高渲染性能
-    let sampledRecords = records;
-    if (records.length > 120) { // 如果超过120个点
-      const sampleRate = Math.ceil(records.length / 120);
-      sampledRecords = records.filter((_, index) => index % sampleRate === 0);
-
-      // 确保包含带有action的记录（用户操作点）
-      const actionRecords = records.filter(r => r.action);
-      sampledRecords = [...sampledRecords, ...actionRecords].sort((a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
-    }
-
-    // 计算图表高度和宽度
-    const chartHeight = 200;
-    const chartWidth = Math.min(800, window.innerWidth - 100);
-
-    // 查找最大速度值以确定比例
-    const maxSpeed = Math.max(...sampledRecords.map(r => r.speed), 10);
-
-    // 生成图表点
-    const points = sampledRecords.map((record, index) => {
-      const x = (index / (sampledRecords.length - 1 || 1)) * chartWidth;
-      const y = chartHeight - (record.speed / (maxSpeed || 1)) * chartHeight;
-      return `${x},${y}`;
-    }).join(' ');
-
-    // 计算时间标签，在x轴显示
-    const timeLabels = [];
-    if (sampledRecords.length > 1) {
-      // 添加起始时间
-      const startTime = new Date(sampledRecords[0].timestamp);
-      timeLabels.push({
-        x: 0,
-        label: startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
-      });
-
-      // 中间点时间
-      const midIndex = Math.floor(sampledRecords.length / 2);
-      const midTime = new Date(sampledRecords[midIndex].timestamp);
-      timeLabels.push({
-        x: (midIndex / (sampledRecords.length - 1)) * chartWidth,
-        label: midTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
-      });
-
-      // 结束时间
-      const endTime = new Date(sampledRecords[sampledRecords.length - 1].timestamp);
-      timeLabels.push({
-        x: chartWidth,
-        label: endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})
-      });
-    }
-
-    // 图例
-    const legends = [
-      { color: "#3b82f6", label: "打字速度" },
-      { color: "#8b5cf6", label: "添加模式 (A)" },
-      { color: "#f59e0b", label: "反馈模式 (F)" }
-    ];
-
-    // 操作图例
-    const operationLegends = [
-      { symbol: "●", label: "应用" },
-      { symbol: "▲", label: "点赞" },
-      { symbol: "■", label: "拒绝" },
-    ];
-
-    return (
-      <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="font-bold text-gray-700">打字速度-时间图表</h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => {
-                setTypingSpeedRecords([]); // 清空记录
-              }}
-              className="text-sm text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded"
-            >
-              清空数据
-            </button>
-            <button
-              onClick={() => setShowTypingChart(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              关闭
-            </button>
-          </div>
-        </div>
-
-        {/* 图例 */}
-        <div className="flex space-x-4 mb-2">
-          {legends.map((legend, index) => (
-            <div key={index} className="flex items-center">
-              <div
-                className="w-3 h-3 rounded-full mr-1"
-                style={{ backgroundColor: legend.color }}
-              ></div>
-              <span className="text-xs text-gray-600">{legend.label}</span>
-            </div>
-          ))}
-          <div className="border-l pl-2 ml-2">
-            {operationLegends.map((legend, index) => (
-              <span key={index} className="text-xs text-gray-600 mr-2">
-                {legend.symbol} {legend.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative" style={{ height: `${chartHeight + 30}px`, width: '100%' }}>
-          <svg width="100%" height={chartHeight + 30} className="overflow-visible">
-            {/* Y轴刻度 */}
-            {[0, 0.25, 0.5, 0.75, 1].map((tick) => (
-              <g key={tick}>
-                <line
-                  x1="0"
-                  y1={chartHeight - tick * chartHeight}
-                  x2="100%"
-                  y2={chartHeight - tick * chartHeight}
-                  stroke="#e5e7eb"
-                  strokeWidth="1"
-                />
-                <text
-                  x="0"
-                  y={chartHeight - tick * chartHeight - 5}
-                  fontSize="10"
-                  fill="#6b7280"
-                >
-                  {Math.round(tick * maxSpeed)}
-                </text>
-              </g>
-            ))}
-
-            {/* 时间轴标签 */}
-            {timeLabels.map((item, index) => (
-              <text
-                key={index}
-                x={item.x}
-                y={chartHeight + 15}
-                fontSize="10"
-                fill="#6b7280"
-                textAnchor={index === 0 ? "start" : index === timeLabels.length - 1 ? "end" : "middle"}
-              >
-                {item.label}
-              </text>
-            ))}
-
-            {/* X轴线 */}
-            <line
-              x1="0"
-              y1={chartHeight}
-              x2="100%"
-              y2={chartHeight}
-              stroke="#9ca3af"
-              strokeWidth="1"
-            />
-
-            {/* 数据线 */}
-            <polyline
-              points={points}
-              fill="none"
-              stroke="#3b82f6"
-              strokeWidth="2"
-            />
-
-            {/* 数据点（包括普通点和操作点） */}
-            {sampledRecords.map((record, index) => {
-              const x = (index / (sampledRecords.length - 1 || 1)) * chartWidth;
-              const y = chartHeight - (record.speed / (maxSpeed || 1)) * chartHeight;
-
-              // 根据操作类型设置不同的样式
-              let pointColor = "#3b82f6"; // 默认蓝色
-              let pointSize = 3;
-              let shape = "circle"; // 默认形状：圆形
-
-              if (record.action) {
-                pointSize = 6; // 操作点更大
-
-                if (record.action.type === 'F') {
-                  pointColor = "#f59e0b"; // 反馈模式黄色
-                } else if (record.action.type === 'A') {
-                  pointColor = "#8b5cf6"; // 添加模式紫色
-                }
-
-                // 根据操作类型设置不同的形状
-                if (record.action.operation === 'like') {
-                  shape = "triangle"; // 点赞：三角形
-                } else if (record.action.operation === 'reject') {
-                  shape = "square"; // 拒绝：方形
-                }
-              }
-
-              // 只在数据点较少或是操作点时显示
-              if (sampledRecords.length < 60 || record.action) {
-                if (shape === "circle") {
-                  return (
-                    <circle
-                      key={index}
-                      cx={x}
-                      cy={y}
-                      r={pointSize}
-                      fill={pointColor}
-                      onMouseEnter={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'block';
-                          tooltip.style.left = `${x + 10}px`;
-                          tooltip.style.top = `${y - 30}px`;
-
-                          let operationText = '';
-                          if (record.action) {
-                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
-                            operationText += `\n操作: ${
-                              record.action.operation === 'apply' ? '应用' :
-                              record.action.operation === 'like' ? '点赞' : '拒绝'
-                            }`;
-                          }
-
-                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
-速度: ${record.speed} 字符/分钟${operationText}`;
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'none';
-                        }
-                      }}
-                    />
-                  );
-                } else if (shape === "triangle") {
-                  // 三角形
-                  const size = pointSize * 1.5;
-                  return (
-                    <polygon
-                      key={index}
-                      points={`${x},${y-size} ${x+size},${y+size} ${x-size},${y+size}`}
-                      fill={pointColor}
-                      onMouseEnter={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'block';
-                          tooltip.style.left = `${x + 10}px`;
-                          tooltip.style.top = `${y - 30}px`;
-
-                          let operationText = '';
-                          if (record.action) {
-                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
-                            operationText += `\n操作: ${
-                              record.action.operation === 'apply' ? '应用' :
-                              record.action.operation === 'like' ? '点赞' : '拒绝'
-                            }`;
-                          }
-
-                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
-速度: ${record.speed} 字符/分钟${operationText}`;
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'none';
-                        }
-                      }}
-                    />
-                  );
-                } else if (shape === "square") {
-                  // 方形
-                  const size = pointSize * 1.2;
-                  return (
-                    <rect
-                      key={index}
-                      x={x - size/2}
-                      y={y - size/2}
-                      width={size}
-                      height={size}
-                      fill={pointColor}
-                      onMouseEnter={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'block';
-                          tooltip.style.left = `${x + 10}px`;
-                          tooltip.style.top = `${y - 30}px`;
-
-                          let operationText = '';
-                          if (record.action) {
-                            operationText = `\n模式: ${record.action.type === 'A' ? '添加' : '反馈'}`;
-                            operationText += `\n操作: ${
-                              record.action.operation === 'apply' ? '应用' :
-                              record.action.operation === 'like' ? '点赞' : '拒绝'
-                            }`;
-                          }
-
-                          tooltip.textContent = `时间: ${new Date(record.timestamp).toLocaleTimeString()}
-速度: ${record.speed} 字符/分钟${operationText}`;
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        const tooltip = document.getElementById('chart-tooltip');
-                        if (tooltip) {
-                          tooltip.style.display = 'none';
-                        }
-                      }}
-                    />
-                  );
-                }
-              }
-              return null;
-            })}
-          </svg>
-
-          {/* Tooltip */}
-          <div
-            id="chart-tooltip"
-            className="absolute hidden bg-black text-white p-2 rounded text-xs whitespace-pre z-10"
-            style={{ pointerEvents: 'none' }}
-          />
-        </div>
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          总记录数: {records.length} | 图表点数: {sampledRecords.length} | 最大速度: {maxSpeed} 字符/分钟
-        </div>
-      </div>
-    );
-  };
-
-  // 导出打字速度记录为CSV
-  const exportSpeedRecordsToCSV = () => {
-    if (typingSpeedRecords.length === 0) {
-      alert('没有可导出的打字速度记录');
-      return;
-    }
-
-    // 创建CSV内容，添加用户操作的标记
-    const csvHeader = 'timestamp,speed,action_type,suggestion_id,operation\n';
-    const csvRows = typingSpeedRecords.map(record => {
-      let actionType = '';
-      let suggestionId = '';
-      let operation = '';
-
-      if (record.action) {
-        // 使用统一的模式标记
-        actionType = record.action.type; // A 或 F
-
-        if (record.action.suggestionId) {
-          suggestionId = record.action.suggestionId.toString();
-        }
-
-        operation = record.action.operation; // apply, like, reject
-      }
-
-      return `${record.timestamp},${record.speed},${actionType},${suggestionId},${operation}`;
-    }).join('\n');
-
-    const csvContent = csvHeader + csvRows;
-
-    // 创建Blob并生成下载链接
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `typing-speed-${sessionId}-${new Date().toISOString()}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   // 导出写作位置记录为CSV
   const exportPositionRecordsToCSV = () => {
@@ -1137,9 +627,6 @@ export default function UserPage() {
     setText("");
     setSuggestions([]);
     setSuggestion(null);
-    setTypingSpeedRecords([]);
-    setTypingHistory([]);
-    setTypingSpeed(0);
     setActiveHighlight(null);
     setWritingPositionRecords([]); // 清除写作位置记录
 
@@ -1147,12 +634,6 @@ export default function UserPage() {
     localStorage.removeItem("user");
 
     // 清理计时器
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-    }
-    if (typingRecordTimerRef.current) {
-      clearInterval(typingRecordTimerRef.current);
-    }
     if (positionRecordTimerRef.current) {
       clearInterval(positionRecordTimerRef.current);
     }
@@ -1251,26 +732,13 @@ export default function UserPage() {
           </h1>
           <div className="flex items-center space-x-4">
             <div className="bg-blue-700 px-3 py-1 rounded">
-              <span className="text-sm font-bold">{typingSpeed}</span>
-              <span className="text-sm ml-1">字符/分钟</span>
+              <span className="text-sm">文本长度: {text.length}</span>
             </div>
-            <button
-              onClick={exportSpeedRecordsToCSV}
-              className="bg-blue-800 hover:bg-blue-900 text-white text-sm py-1 px-3 rounded transition-colors"
-            >
-              导出速度CSV
-            </button>
             <button
               onClick={exportPositionRecordsToCSV}
               className="bg-green-600 hover:bg-green-700 text-white text-sm py-1 px-3 rounded transition-colors"
             >
               导出位置CSV
-            </button>
-            <button
-              onClick={() => setShowTypingChart(!showTypingChart)}
-              className="bg-blue-800 hover:bg-blue-900 text-white text-sm py-1 px-3 rounded transition-colors"
-            >
-              {showTypingChart ? '隐藏图表' : '显示图表'}
             </button>
             <button
               onClick={handleLogout}
@@ -1282,7 +750,6 @@ export default function UserPage() {
         </div>
       </header>
 
-      {showTypingChart && renderTypingSpeedChart()}
 
       <main className="flex flex-1 p-8">
         <div className="flex-1 mr-4 px-20">
@@ -1317,7 +784,7 @@ export default function UserPage() {
       </main>
 
       <footer className="p-4 bg-gray-100 text-center text-gray-500 text-sm">
-        Session ID: {sessionId} | 速度记录: {typingSpeedRecords.length} | 位置记录: {writingPositionRecords.length} | 当前速度: {typingSpeed} 字符/分钟
+        Session ID: {sessionId} | 快照记录: {writingPositionRecords.length} | 文本长度: {text.length} 字符
       </footer>
     </div>
   );
