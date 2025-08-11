@@ -33,12 +33,6 @@ export default function UserPage() {
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
   const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [writingPositionRecords, setWritingPositionRecords] = useState<{
-    timestamp: string,
-    textLength: number,
-    lastSentence: string,
-    wordCount: number
-  }[]>([]);
   const positionRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 初始化会话 & 获取现有用户
@@ -115,23 +109,6 @@ export default function UserPage() {
         // 计算词数和句子数
         const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
         const sentenceCount = text.split(/[。！？!?]/).filter(s => s.trim()).length;
-        
-        // 保存到本地状态（用于图表显示）
-        const positionRecord = {
-          timestamp: now.toISOString(),
-          textLength: text.length,
-          lastSentence: lastSentence,
-          wordCount: wordCount
-        };
-        
-        setWritingPositionRecords(prev => {
-          const newRecords = [...prev, positionRecord];
-          // 保留最近1小时的记录 (360条记录，每10秒一条)
-          if (newRecords.length > 360) {
-            return newRecords.slice(-180); // 保留最近半小时
-          }
-          return newRecords;
-        });
         
         // 保存到数据库
         try {
@@ -587,34 +564,6 @@ export default function UserPage() {
 
 
 
-  // 导出写作位置记录为CSV
-  const exportPositionRecordsToCSV = () => {
-    if (writingPositionRecords.length === 0) {
-      alert('没有可导出的写作位置记录');
-      return;
-    }
-
-    // 创建CSV内容
-    const csvHeader = 'timestamp,text_length,word_count,last_sentence\n';
-    const csvRows = writingPositionRecords.map(record => {
-      // 处理可能包含逗号的最后一句话
-      const cleanLastSentence = record.lastSentence.replace(/"/g, '""'); // CSV转义
-      return `${record.timestamp},${record.textLength},${record.wordCount},"${cleanLastSentence}"`;
-    }).join('\n');
-
-    const csvContent = csvHeader + csvRows;
-
-    // 创建Blob并生成下载链接
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `writing-position-${sessionId}-${new Date().toISOString()}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   // 处理登出
   const handleLogout = () => {
@@ -628,7 +577,6 @@ export default function UserPage() {
     setSuggestions([]);
     setSuggestion(null);
     setActiveHighlight(null);
-    setWritingPositionRecords([]); // 清除写作位置记录
 
     // 清除本地存储
     localStorage.removeItem("user");
@@ -735,12 +683,6 @@ export default function UserPage() {
               <span className="text-sm">文本长度: {text.length}</span>
             </div>
             <button
-              onClick={exportPositionRecordsToCSV}
-              className="bg-green-600 hover:bg-green-700 text-white text-sm py-1 px-3 rounded transition-colors"
-            >
-              导出位置CSV
-            </button>
-            <button
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded transition-colors"
             >
@@ -784,7 +726,7 @@ export default function UserPage() {
       </main>
 
       <footer className="p-4 bg-gray-100 text-center text-gray-500 text-sm">
-        Session ID: {sessionId} | 快照记录: {writingPositionRecords.length} | 文本长度: {text.length} 字符
+        Session ID: {sessionId} | 文本长度: {text.length} 字符
       </footer>
     </div>
   );
