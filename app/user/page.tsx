@@ -44,6 +44,7 @@ export default function UserPage() {
   }[]>([]);
   const [showTypingChart, setShowTypingChart] = useState<boolean>(false);
   const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [writingPositionRecords, setWritingPositionRecords] = useState<{
     timestamp: string,
     textLength: number,
@@ -349,8 +350,14 @@ export default function UserPage() {
     setLoading(true);
 
     try {
-      // 检查用户是否已存在
-      const existingUser = existingUsers.find(u => u.name === userName.trim());
+      // 优先使用selectedUserId（从下拉列表选择的用户）
+      let existingUser = null;
+      if (selectedUserId) {
+        existingUser = existingUsers.find(u => u.id === selectedUserId);
+      } else {
+        // 如果没有选择用户ID，则通过名字匹配查找
+        existingUser = existingUsers.find(u => u.name === userName.trim());
+      }
 
       if (existingUser) {
         // 用户存在，执行登录逻辑
@@ -362,14 +369,14 @@ export default function UserPage() {
           "user",
           JSON.stringify({
             id: existingUser.id,
-            name: userName.trim(),
+            name: existingUser.name, // 使用数据库中的名字，确保一致性
             session_id: sessionId, // Update session ID for existing user login
           })
         );
 
         // 获取用户文档
         fetchUserDocument(existingUser.id);
-        console.log(`用户 ${userName} 登录成功`);
+        console.log(`用户 ${existingUser.name} (ID: ${existingUser.id}) 登录成功`);
 
       } else {
         // 用户不存在，执行注册逻辑
@@ -1124,6 +1131,7 @@ export default function UserPage() {
     // 清除状态
     setUserName("");
     setUserId(null);
+    setSelectedUserId(null); // 清除选中的用户ID
     setIsRegistered(false);
     setDocumentId(null);
     setText("");
@@ -1171,11 +1179,16 @@ export default function UserPage() {
                   id="existing-user"
                   name="existing-user"
                   onChange={(e) => {
-                    const selectedUserId = e.target.value;
-                    const selectedUser = existingUsers.find(u => u.id.toString() === selectedUserId);
-                    if (selectedUser) {
-                      setUserName(selectedUser.name);
+                    const selectedUserIdStr = e.target.value;
+                    if (selectedUserIdStr) {
+                      const selectedUserId = parseInt(selectedUserIdStr);
+                      const selectedUser = existingUsers.find(u => u.id === selectedUserId);
+                      if (selectedUser) {
+                        setSelectedUserId(selectedUserId);
+                        setUserName(selectedUser.name);
+                      }
                     } else {
+                      setSelectedUserId(null);
                       setUserName(""); // Clear name if default option selected
                     }
                   }}
@@ -1184,7 +1197,7 @@ export default function UserPage() {
                   <option value="">-- 选择用户 --</option>
                   {existingUsers.map(user => (
                     <option key={user.id} value={user.id}>
-                      {user.name}
+                      {user.name} (ID: {user.id})
                     </option>
                   ))}
                 </select>

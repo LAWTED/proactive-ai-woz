@@ -285,14 +285,11 @@ export default function AdminPage() {
       // CSV头部
       csvData.push([
         'snapshot_id', 'session_id', 'timestamp', 'text_length', 'word_count', 
-        'sentence_count', 'typing_speed', 'last_sentence', 'full_text_preview', 'created_at'
+        'sentence_count', 'typing_speed', 'last_sentence', 'full_text', 'created_at'
       ]);
 
       // 添加数据行
       snapshots.forEach(snapshot => {
-        const fullTextPreview = snapshot.full_text ? 
-          snapshot.full_text.substring(0, 200) + (snapshot.full_text.length > 200 ? '...' : '') : '';
-        
         csvData.push([
           snapshot.id,
           snapshot.session_id,
@@ -302,7 +299,7 @@ export default function AdminPage() {
           snapshot.sentence_count,
           snapshot.typing_speed,
           snapshot.last_sentence || '',
-          fullTextPreview,
+          snapshot.full_text || '',
           snapshot.created_at
         ]);
       });
@@ -367,14 +364,11 @@ export default function AdminPage() {
       csvData.push([
         'snapshot_id', 'user_id', 'user_name', 'session_id', 'timestamp',
         'text_length', 'word_count', 'sentence_count', 'typing_speed',
-        'last_sentence', 'full_text_preview', 'created_at'
+        'last_sentence', 'full_text', 'created_at'
       ]);
 
       // 添加数据行
       snapshots.forEach(snapshot => {
-        const fullTextPreview = snapshot.full_text ? 
-          snapshot.full_text.substring(0, 100) + (snapshot.full_text.length > 100 ? '...' : '') : '';
-        
         csvData.push([
           snapshot.id,
           snapshot.user_id,
@@ -386,7 +380,7 @@ export default function AdminPage() {
           snapshot.sentence_count,
           snapshot.typing_speed,
           snapshot.last_sentence || '',
-          fullTextPreview,
+          snapshot.full_text || '',
           snapshot.created_at
         ]);
       });
@@ -571,14 +565,11 @@ export default function AdminPage() {
             // CSV头部
             snapshotCSVData.push([
               'snapshot_id', 'session_id', 'timestamp', 'text_length', 'word_count', 
-              'sentence_count', 'typing_speed', 'last_sentence', 'full_text_preview', 'created_at'
+              'sentence_count', 'typing_speed', 'last_sentence', 'full_text', 'created_at'
             ]);
 
             // 添加数据行
             snapshots.forEach(snapshot => {
-              const fullTextPreview = snapshot.full_text ? 
-                snapshot.full_text.substring(0, 300) + (snapshot.full_text.length > 300 ? '...' : '') : '';
-              
               snapshotCSVData.push([
                 snapshot.id,
                 snapshot.session_id,
@@ -588,7 +579,7 @@ export default function AdminPage() {
                 snapshot.sentence_count,
                 snapshot.typing_speed,
                 snapshot.last_sentence || '',
-                fullTextPreview,
+                snapshot.full_text || '',
                 snapshot.created_at
               ]);
             });
