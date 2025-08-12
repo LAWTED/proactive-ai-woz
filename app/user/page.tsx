@@ -34,6 +34,7 @@ export default function UserPage() {
   const [existingUsers, setExistingUsers] = useState<{ id: number; name: string }[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const positionRecordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const textRef = useRef<string>("");
 
   // 初始化会话 & 获取现有用户
   useEffect(() => {
@@ -93,23 +94,16 @@ export default function UserPage() {
   // 每10秒记录用户写作时间快照
   useEffect(() => {
     positionRecordTimerRef.current = setInterval(async () => {
-      if (userId && sessionId && text.length > 0) { // 确保有用户ID、会话ID且有文本时记录
+      if (userId && sessionId) { // 确保有用户ID、会话ID时记录
         const now = new Date();
-        
-        // 获取最后一句话作为位置标识
-        let lastSentence = '';
-        const sentences = text.split(/[。！？!?]/).filter(s => s.trim());
-        if (sentences.length > 0) {
-          lastSentence = sentences[sentences.length - 1].trim().substring(0, 20); // 取最后一句的前20个字符
-        } else {
-          // 如果没有句号，取最后20个字符
-          lastSentence = text.slice(-20);
-        }
-        
+
+        // 获取当前文本
+        const currentText = textRef.current;
+
         // 计算词数和句子数
-        const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
-        const sentenceCount = text.split(/[。！？!?]/).filter(s => s.trim()).length;
-        
+        const wordCount = currentText.trim().split(/\s+/).filter(word => word.length > 0).length;
+        const sentenceCount = currentText.split(/[。！？!?]/).filter(s => s.trim()).length;
+
         // 保存到数据库
         try {
           const { error } = await supabase
@@ -118,18 +112,17 @@ export default function UserPage() {
               user_id: userId,
               session_id: sessionId,
               timestamp: now.toISOString(),
-              text_length: text.length,
+              text_length: currentText.length,
               word_count: wordCount,
               sentence_count: sentenceCount,
-              last_sentence: lastSentence,
               typing_speed: 0, // 不再实时计算速度，后续可通过快照差值分析
-              full_text: text // 保存完整文本快照
+              full_text: currentText // 保存完整文本快照
             });
 
           if (error) {
             console.error('保存写作快照失败:', error);
           } else {
-            console.log(`时间快照已保存: 字符数${text.length}, 词数${wordCount}, 句子数${sentenceCount}, 时间: ${now.toISOString()}`);
+            console.log(`时间快照已保存: 字符数${currentText.length}, 词数${wordCount}, 句子数${sentenceCount}, 时间: ${now.toISOString()}`);
           }
         } catch (error) {
           console.error('保存写作快照出错:', error);
@@ -232,7 +225,9 @@ export default function UserPage() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setText(data[0].content || "");
+        const content = data[0].content || "";
+        setText(content);
+        textRef.current = content; // 同步更新ref
         setDocumentId(data[0].id);
       } else {
         // 如果没有文档，创建一个新文档
@@ -356,6 +351,7 @@ export default function UserPage() {
   // 处理文本变更
   const handleTextChange = (newText: string) => {
     setText(newText);
+    textRef.current = newText; // 同步更新ref
 
     // 更新文档内容
     if (documentId && userId) {
